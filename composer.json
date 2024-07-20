@@ -1,0 +1,29 @@
+{
+	"name": "divengine/functions",
+	"license": "GPL-3.0-or-later",
+	"description": "Div PHP Functions",
+	"keywords": [
+		"php language",
+		"functions",
+		"helpers",
+		"utilities"
+	],
+	"homepage": "https://divengine.com",
+	"version": "1.0.0",
+	"authors": [
+		{
+			"name": "Rafa Rodriguez",
+			"email": "rafageist@divengine.com",
+			"homepage": "https://rafageist.com",
+			"role": "Founder"
+		}
+	],
+	"require": {
+		"php": ">=8.0.0"
+	},
+	"autoload": {
+		"files": [
+			"src/functions.php"
+		]
+	}
+}
