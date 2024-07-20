@@ -1015,7 +1015,7 @@ function teaser500($text)
  * 
  * @return string
  */
-function removeAccent(string $value, bool $includeNTilde = false): string
+function remove_accents(string $value, bool $includeNTilde = false): string
 {
 	$search = ['á', 'é', 'í', 'ó', 'ú', 'ü', 'Á', 'É', 'Í', 'Ó', 'Ú', 'Ü'];
 	$replace = ['a', 'e', 'i', 'o', 'u', 'u', 'A', 'E', 'I', 'O', 'U', 'U'];
@@ -1050,9 +1050,74 @@ function divide(mixed $value): array
 	};
 }
 
-function unite(array $elements)
+function conquer(array $values, bool $recursive = true): mixed
 {
+	if (empty($values)) {
+		return null;
+	}
+
+	$allNumerics = true;
+	foreach ($values as $value) {
+		if (!is_numeric($value)) {
+			$allNumerics = false;
+			break;
+		}
+	}
+
+	if (is_numeric($allNumerics)) {
+		$s = join('', $values);
+		$n = (float) $s;
+		return is_float($n) ? $n : (int) $s;
+	}
+
+	$firstValue = $values[0];
+	
+	if (is_bool($firstValue)) {
+		return in_array(true, $values, true);
+	}
+
+	if (is_string($firstValue)) {
+		return implode('', $values);
+	}
+
+	if (is_array($firstValue)) {
+		if ($recursive)
+		{
+			return conquer(array_merge(...$values));
+		}
+
+		return array_merge(...$values);
+	}
+
+	if (is_object($firstValue)) {
+		$result = new stdClass();
+		foreach ($values as $object) {
+			foreach ($object as $prop => $val) {
+				$result->$prop = $val;
+			}
+		}
+		return $result;
+	}
+
+	$keys = array_keys($values);
+
+	if (is_string($keys[0])) {
+		if ($recursive) {
+			return string((object) $values);
+		}
+
+		return (object) $values;
+	}
+
+	$array = [];
+	foreach ($values as $value) {
+		$array[] = string($value);
+	}
+
+	return join('', $array);
 }
+
+
 /**
  * Check position of element in a string, numeric, array or object
  * 

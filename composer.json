@@ -25,5 +25,9 @@
 		"files": [
 			"src/functions.php"
 		]
+	},
+	"require-dev": {
+		"phpunit/phpunit": "^11.2",
+		"phpstan/phpstan": "^1.11"
 	}
 }
