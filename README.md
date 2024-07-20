@@ -5,7 +5,7 @@ A collection of standalone functions designed to enhance PHP capabilities, provi
 ## Install via Composer
 
 ```shell
-composer require divengine\functions
+composer require divengine/functions
 ```
 
 ## Usage
