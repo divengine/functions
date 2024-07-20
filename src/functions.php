@@ -1,35 +1,219 @@
 <?php
 
 /**
- * Divengine PHP Functions
+ * Div PHP Functions
  * 
  * A collection of standalone functions designed to enhance PHP capabilities,
  * providing common utilities without external dependencies. 
  * Part of the divengine* ecosystem, these functions offer atomic 
  * solutions that PHP lacks natively.
  * 
- * @package divengine
+ * @package divengine/functions
  */
 
 namespace divengine;
 
+use Exception;
+use DateTime;
+use DateTimeZone;
+use ArrayObject;
+use stdClass;
+
+#region Checkers
+
 /**
- * Check if a variable is a closure
+ * Checks if the provided variable is a Closure.
  *
- * @param $t
- *
- * @return bool
+ * @param mixed $var The variable to check.
+ * @return bool Returns true if the variable is a Closure, false otherwise.
  */
-function is_closure(mixed $t): bool
+function is_closure(mixed $var): bool
 {
-	return $t instanceof \Closure;
+	return $var instanceof \Closure;
 }
 
 /**
- * Return boolean value of a variable
+ * Checks if the provided variable is not a Closure.
  *
- * @param $value
- * @return bool
+ * @param mixed $var The variable to check.
+ * @return bool Returns true if the variable is not a Closure, false otherwise.
+ */
+function is_not_closure(mixed $var): bool
+{
+	return !is_closure($var);
+}
+
+/**
+ * Validates whether the given string is a correctly formatted date according to the specified format.
+ * This function checks not only if the date matches the format but also if it is a valid calendar date.
+ *
+ * @param string $date The date string to validate.
+ * @param string $format The format to validate against, defaults to 'Y-m-d'.
+ * @return bool Returns true if the string is a valid date according to the format and a real calendar date, otherwise false.
+ */
+function is_valid_date(string $date, string $format = 'Y-m-d'): bool
+{
+	$dateTime = DateTime::createFromFormat($format, $date);
+	// Check if the date matches the specified format and if it represents a real date
+	if ($dateTime && $dateTime->format($format) === $date) {
+		// Extract parts of the date to verify if they represent a valid calendar date
+		$year = (int) $dateTime->format('Y');
+		$month = (int) $dateTime->format('m');
+		$day = (int) $dateTime->format('d');
+
+		// Use checkdate to ensure the date actually exists
+		return checkdate($month, $day, $year);
+	}
+	return false;
+}
+
+/**
+ * Checks if a string is a valid UUID (Universally Unique Identifier).
+ * UUIDs are in the format of 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx' where 'x' is a hexadecimal digit.
+ *
+ * @param string $uuid The string to validate.
+ * @return bool Returns true if the string is a valid UUID, otherwise false.
+ */
+function is_uuid(string $uuid): bool
+{
+	return preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i', $uuid) === 1;
+}
+
+/**
+ * Checks if a string is a valid ISO 8601 date.
+ *
+ * The ISO 8601 date format includes patterns like "YYYY-MM-DDThh:mm:ss.sTZD".
+ * This function validates a comprehensive pattern including:
+ * - Complete date plus hours, minutes, seconds and a decimal fraction of a second
+ * - Time zone designators (Z or +hh:mm or -hh:mm).
+ *
+ * @param string $date The date string to validate.
+ * @return bool Returns true if the string is a valid ISO 8601 date, false otherwise.
+ */
+function is_ISO8601(string $date): bool
+{
+	$pattern = '/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|([+-])(\d{2}):(\d{2}))$/';
+	return preg_match($pattern, $date) === 1;
+}
+
+/**
+ * Checks if all elements in an array are valid UUIDs.
+ *
+ * @param array $uuids The array to validate.
+ * @return bool Returns true if every element in the array is a valid UUID, otherwise false.
+ */
+function is_array_of_uuid(?array $uuids): bool
+{
+	if ($uuids === null || empty($uuids)) {
+		return false;
+	}
+
+	foreach ($uuids as $uuid) {
+		if (!is_uuid($uuid)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/**
+ * Checks if a string is a valid email address according to the format defined in the FILTER_VALIDATE_EMAIL filter.
+ *
+ * @param string $email The email address to validate.
+ * @return bool Returns true if the string is a valid email address, otherwise false.
+ */
+function is_email(string $email): bool
+{
+	return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+}
+
+/**
+ * Checks if a given string is a valid hexadecimal color in the form #FFFFFF.
+ *
+ * @param string $color The color string to validate.
+ * @return bool Returns true if the string is a valid hex color, otherwise false.
+ */
+function is_hex_color(string $color): bool
+{
+	return preg_match('/^#([0-9A-F]{6}|[0-9A-F]{3})$/i', $color) === 1;
+}
+
+/**
+ * Checks if the given string is a valid USDT (Tether) wallet address.
+ * For TRON-based addresses, they typically start with 'T' followed by 33 alphanumeric characters.
+ *
+ * @param string $value The string to validate as a USDT address.
+ * @return bool Returns true if the string is a valid USDT wallet address, otherwise false.
+ */
+function is_usdt(string $value): bool
+{
+	return preg_match('/^T[A-Za-z0-9]{33}$/', $value) === 1;
+}
+
+/**
+ * Checks if a value can be interpreted as a boolean.
+ * This function returns true if the value is either a boolean or a string that can be interpreted as a boolean ('true' or 'false', case-insensitive).
+ *
+ * @param mixed $value The value to evaluate.
+ * @return bool Returns true if the value can be interpreted as a boolean, otherwise false.
+ */
+function is_boolean($value): bool
+{
+	if (is_bool($value)) {
+		return true;
+	}
+
+	if (is_string($value)) {
+		$normalizedValue = lower($value);
+		return in_array($normalizedValue, ['true', 'false'], true);
+	}
+
+	return false;
+}
+
+/**
+ * Checks if a given string is entirely in uppercase.
+ * This function iterates through each character and checks if any are lowercase.
+ * 
+ * @param string $value The string to check.
+ * @return bool Returns true if the string is entirely uppercase, otherwise returns false.
+ */
+function is_upper(string $value): bool
+{
+	return ctype_upper($value);
+}
+
+/**
+ * Checks if a given string is entirely in lowercase.
+ *
+ * @param string $value The string to check.
+ * @return bool Returns true if the string is entirely lowercase, otherwise returns false.
+ */
+function is_lower(string $value): bool
+{
+	return ctype_lower($value);
+}
+
+/**
+ * Returns the input if it is not null or empty, otherwise returns null.
+ *
+ * @param mixed $value The array to check.
+ * 
+ * @return mixed Returns the input if not null or empty, otherwise null.
+ */
+function something_or_null($value): mixed
+{
+	return (is_null($value) || empty($value) && $value != '0' && $value != 0) ? null : $value;
+}
+
+#endregion
+
+#region Converters
+/**
+ * Converts a given value to its boolean equivalent.
+ *
+ * @param mixed $value The value to be converted to boolean.
+ * @return bool Returns the boolean equivalent of the input value.
  */
 function boolean(mixed $value): bool
 {
@@ -49,17 +233,32 @@ function boolean(mixed $value): bool
 		return false;
 	}
 
+	// Catch-all conversion using PHP's native boolval function.
 	return boolval($value);
 }
 
 /**
- * Return string value of a variable
+ * Converts a given value to its string equivalent.
  *
- * @param $value
- * @return string
+ * @param mixed $value The value to be converted to a string.
+ * @param callable $criteria A callable that determines if the value should be converted.
+ * 
+ * @return string Returns the string equivalent of the input value.
  */
-function string(mixed $value): string
+function string(mixed $value, callable|bool $criteria = null): string
 {
+	if ($criteria !== null) {
+		if (is_callable($criteria)) {
+			if (!$criteria($value)) {
+				return null;
+			}
+		} else {
+			if (!$criteria) {
+				return null;
+			}
+		}
+	}
+
 	if (is_string($value)) {
 		return $value;
 	}
@@ -72,11 +271,11 @@ function string(mixed $value): string
 		return $value ? 'true' : 'false';
 	}
 
-	if (is_array($value)) {
-		return json_encode($value);
+	if (is_object($value) && method_exists($value, '__toString')) {
+		return $value->__toString();
 	}
 
-	if (is_object($value)) {
+	if (is_array($value) || is_object($value)) {
 		return json_encode($value);
 	}
 
@@ -84,22 +283,26 @@ function string(mixed $value): string
 }
 
 /**
- * Return string value of a variable or null
+ * Converts a given value to its string equivalent if not empty, otherwise returns null.
  *
- * @param $value
- * @return string
+ * @param mixed $value The value to be converted to a string or null if empty.
+ * @return string|null Returns the string equivalent of the input value or null if it's empty.
  */
-function stringOrNull(mixed $value): ?string
+function string_nullable(mixed $value): ?string
 {
-	if (empty($value)) {
-		return null;
-	}
-
-	return string($value);
+	return string($value, !(empty($value) && $value !== '0' && $value !== 0));
 }
 
+#endregion
+
+#region Strings
+
 /**
- * Return upper case string value of a variable
+ * Converts a given string to its uppercase equivalent.
+ * Returns an empty string if the input is null.
+ *
+ * @param string|null $value The string to be converted to uppercase.
+ * @return string The uppercase version of the input string, or an empty string if input is null.
  */
 function upper(?string $value): string
 {
@@ -110,17 +313,13 @@ function upper(?string $value): string
 	return mb_strtoupper(string($value));
 }
 
-function upperOrNull(?string $value): ?string
-{
-	if ($value === null) {
-		return null;
-	}
-
-	return strtoupper($value);
-}
 
 /**
- * Return lower case string value of a variable
+ * Converts a given string to its lowercase equivalent.
+ * Returns an empty string if the input is null.
+ *
+ * @param string|null $value The string to be converted to lowercase.
+ * @return string The lowercase version of the input string, or an empty string if input is null.
  */
 function lower(?string $value): string
 {
@@ -131,13 +330,52 @@ function lower(?string $value): string
 	return mb_strtolower($value);
 }
 
-function arrayOfStringsOrNull(?array $value): ?array
+/**
+ * Converts a given string to its uppercase equivalent if it's not null.
+ * Returns null if the input is null.
+ *
+ * @param string|null $value The string to be converted to uppercase or null.
+ * @return string|null The uppercase version of the input string, or null if input is null.
+ */
+function upper_nullable(?string $value): ?string
 {
 	if ($value === null) {
 		return null;
 	}
 
-	if (empty($value)) {
+	return mb_strtoupper($value);
+}
+
+/**
+ * Converts a given string to its lowercase equivalent if it's not null.
+ * Returns null if the input is null.
+ *
+ * @param string|null $value The string to be converted to lowercase or null.
+ * @return string|null The lowercase version of the input string, or null if input is null.
+ */
+function lower_nullable(?string $value): ?string
+{
+	if ($value === null) {
+		return null;
+	}
+
+	return mb_strtolower($value);
+}
+#endregion
+
+#region Arrays
+/**
+ * Converts each element of an array to its string equivalent, 
+ * using the 'string' function.
+ * Returns null if the input array is null or empty.
+ *
+ * @param array|null $value The array to be converted to an array of strings, or null.
+ * 
+ * @return array|null An array with each element converted to a string, or null if input is null or empty.
+ */
+function string_array(?array $value): ?array
+{
+	if ($value === null || empty($value)) {
 		return null;
 	}
 
@@ -146,245 +384,373 @@ function arrayOfStringsOrNull(?array $value): ?array
 	return $value;
 }
 
-function arrayOrNull(?array $value): ?array
+/**
+ * Converts each element of an array to its string equivalent 
+ * if possible, otherwise sets it to null.
+ * Returns null if the input array is null.
+ *
+ * @param array|null $value The array to be processed, where each element is converted to a string or set to null.
+ * @return array|null An array where each element is a string or null, or null if input is null.
+ */
+function string_array_nullable(?array $value): ?array
+{
+	if ($value === null || empty($value)) {
+		return null;
+	}
+
+	return array_map(function ($item) {
+		try {
+			return string_nullable($item);
+		} catch (Exception $e) {
+			return null;
+		}
+	}, $value);
+}
+
+/**
+ * Returns an array of string elements from the input array, filtering out non-stringable elements.
+ * Returns null if the resulting array is empty.
+ *
+ * @param array|null $value The array to be processed.
+ * @return array|null An array of string elements, or null if the resulting array is empty.
+ */
+function array_filter_stringable(?array $value): ?array
 {
 	if ($value === null) {
 		return null;
 	}
 
-	if (empty($value)) {
+	$filteredArray = array_filter($value, function ($item) {
+		return is_scalar($item) || is_object($item) && method_exists($item, '__toString');
+	});
+
+	if (empty($filteredArray)) {
 		return null;
 	}
 
-	return $value;
+	return $filteredArray;
 }
 
-function intOrMin($value, int $min): int
+
+#endregion
+
+#region Numeric
+
+/**
+ * Converts a given value to an integer and ensures it is not less than a specified minimum.
+ *
+ * @param mixed $value The value to be converted to an integer.
+ * @param int $min The minimum value to return.
+ * @return int The original value converted to an integer, or the minimum value if the original is less.
+ */
+function int_or_min($value, int $min): int
 {
-	$value = intval($value);
+	$intValue = intval($value);
 
-	if ($value < $min) {
-		return $min;
-	}
-
-	return $value;
-}
-
-function intOrNull($value): ?int
-{
-	if (empty($value)) {
-		return null;
-	}
-
-	return intval($value);
-}
-
-function nonZeroOrNull(int $value)
-{
-	if ($value === 0) {
-		return null;
-	}
-
-	return $value;
+	return ($intValue < $min) ? $min : $intValue;
 }
 
 /**
- * Convert a non empty string to a integer, return null if empty
+ * Converts a given value to an integer and ensures it does not exceed a specified maximum.
  *
- * @param $value
+ * @param mixed $value The value to be converted to an integer.
+ * @param int $max The maximum value to return.
+ * @return int The original value converted to an integer, or the maximum value if the original is more.
  */
-function nullableInt($value): ?int
+function int_or_max($value, int $max): int
 {
-	if (!is_numeric($value)) {
-		return null;
+	$intValue = intval($value);
+
+	return ($intValue > $max) ? $max : $intValue;
+}
+
+/**
+ * Converts a given value to an integer, or returns a default value if the input is empty or invalid.
+ *
+ * @param mixed $value The value to be converted.
+ * @param int $default The default value to return if the input is empty or invalid.
+ * @return int The integer value of the input, or the default value if the input is empty or invalid.
+ */
+function int_or_default($value, ?int $default = 0): int
+{
+	if (empty($value) && $value !== '0' && $value !== 0) {
+		return $default;
 	}
 
 	return intval($value);
 }
 
-function nullableFloat($value): ?float
+/**
+ * Converts a given value to an integer, unless the value is empty, in which case it returns null.
+ *
+ * @param mixed $value The value to be converted to an integer.
+ * @return int|null The integer value of the input, or null if the input is empty.
+ */
+function int_or_null($value): ?int
 {
-	if (empty($value)) {
-		return null;
+	return int_or_default($value, null);
+}
+
+/**
+ * Returns the input value if it is non-zero; returns a default value if the value is zero.
+ *
+ * @param int $value The integer to check.
+ * @param int $default The default value to return if the input is zero.
+ * @return int Returns the input integer if it is non-zero, otherwise the default value.
+ */
+function non_zero_or_default(int $value, ?int $default = -1): int
+{
+	return ($value === 0) ? $default : $value;
+}
+
+/**
+ * Returns the input value if it is non-zero; returns null if the value is zero.
+ *
+ * @param int $value The integer to check.
+ * @return int|null Returns the input integer if it is non-zero, otherwise null.
+ */
+function non_zero_or_null(int $value): ?int
+{
+	return non_zero_or_default($value, null);
+}
+
+/**
+ * Converts a given value to an integer or returns a default value if the input is non-numeric.
+ *
+ * @param mixed $value The value to be converted.
+ * @param int $default The default integer to return if the input is non-numeric.
+ * @return int Returns the integer equivalent if the input is numeric, otherwise the default value.
+ */
+function numeric_or_default($value, ?int $default = 0): int
+{
+	return is_numeric($value) ? intval($value) : $default;
+}
+
+/**
+ * Converts a given value to an integer if it is numeric, otherwise returns null.
+ *
+ * @param mixed $value The value to be converted.
+ * @return int|null Returns the integer equivalent if the input is numeric, otherwise null.
+ */
+function numeric_or_null($value): ?int
+{
+	return numeric_or_default($value, null);
+}
+
+/**
+ * Converts a given value to a float, or returns a default value if the input is empty or non-numeric.
+ *
+ * @param mixed $value The value to be converted.
+ * @param float $default The default float to return if the input is empty or non-numeric.
+ * @return float Returns the float equivalent if the input is not empty, otherwise the default value.
+ */
+function float_or_default($value, ?float $default = 0.0): float
+{
+	if (empty($value) && $value !== '0' && $value !== 0 && $value !== 0.0) {
+		return $default;
 	}
 
 	return floatval($value);
 }
 
 /**
- * Replace a string with another string
+ * Converts a given value to a float if it is not empty, otherwise returns null.
+ *
+ * @param mixed $value The value to be converted to float.
+ * @return float|null Returns the float equivalent of the input if it is not empty, otherwise null.
  */
-function replace(?string $search, ?string $replace, ?string $string): string
+function float_or_null($value): ?float
 {
-	$string = $string ?? '';
-	$search = $search ?? '';
-	$replace = $replace ?? '';
+	return float_or_default($value, null);
+}
+#endregion
 
-	return str_replace($search, $replace, $string);
+#region Processors
+
+/**
+ * Replaces all occurrences of a search value with a replacement value in a given string.
+ *
+ * @param mixed $input The string to perform replacements on.
+ * @param mixed $search The value to search for.
+ * @param mixed $replace The replacement value.
+ * @return string Returns the modified string with replacements.
+ */
+function str_safe_replace_sensitive(mixed $input, mixed $search, mixed $replace): string
+{
+	$search = string($search);
+	$replace = string($replace);
+	$input = string($input);
+
+	return str_replace($search, $replace, $input);
 }
 
 /**
- * Check if a string contains another string
+ * Replaces all occurrences of a search value with a replacement value in a given string, ignoring case.
+ *
+ * @param string $input The string to perform replacements on.
+ * @param string $search The value to search for.
+ * @param string $replace The replacement value.
+ * @return string Returns the modified string with replacements.
+ */
+function str_safe_replace(mixed $input, mixed $search, mixed $replace): string
+{
+	$search = string($search);
+	$replace = string($replace);
+	$input = string($input);
+
+	return str_ireplace($search, $replace, $input);
+}
+
+/**
+ * Replaces all occurrences of a search value with a replacement value in an array.
+ *
+ * @param array $array The array to perform replacements on.
+ * @param mixed $search The value to search for.
+ * @param mixed $replace The replacement value.
+ * @return array Returns the modified array with replacements.
+ */
+function array_replace_values(array $array, $search, $replace)
+{
+	foreach ($array as $key => $value) {
+		$array[$key] = $value == $search ? $replace : $value;
+	}
+
+	return $array;
+}
+
+/**
+ * Replaces all occurrences of a search value with a replacement value in an array, using strict comparison.
+ *
+ * @param array $array The array to perform replacements on.
+ * @param mixed $search The value to search for.
+ * @param mixed $replace The replacement value.
+ * @return array Returns the modified array with replacements.
+ */
+function array_replace_values_strict(array $array, $search, $replace)
+{
+	foreach ($array as $key => $value) {
+		$array[$key] = $value === $search ? $replace : $value;
+	}
+
+	return $array;
+}
+#endregion
+
+/**
+ * Checks if a string contains another string.
+ * This function uses multibyte string position to accurately determine the presence of a substring.
+ *
+ * @param string|null $string The string to search within.
+ * @param string|null $search The substring to search for.
+ * @return bool Returns true if the substring is found, otherwise false.
+ */
+function contains_sensitive(?string $string, ?string $search): bool
+{
+	$string = $string ?? '';
+	$search = $search ?? '';
+
+	return mb_strpos($string, $search) !== false;
+}
+
+/**
+ * Checks if a string contains another string, ignoring case.
+ * This function uses a case-insensitive multibyte string position check.
+ *
+ * @param string|null $string The string to search within.
+ * @param string|null $search The substring to search for.
+ * @return bool Returns true if the substring is found, otherwise false.
  */
 function contains(?string $string, ?string $search): bool
 {
 	$string = $string ?? '';
 	$search = $search ?? '';
 
-	return strpos($string, $search) !== false;
+	return mb_stripos($string, $search) !== false;
+}
+
+
+/**
+ * Converts a datetime string to a date string in the format 'Y-m-d'.
+ *
+ * @param string $datetime The datetime string to convert.
+ * @return string The date in 'Y-m-d' format.
+ */
+function datetime_to_date(string $datetime): string
+{
+	try {
+		$datetime = new DateTime($datetime);
+		return $datetime->format('Y-m-d');
+	} catch (Exception $e) {
+		// Handle the exception if the datetime string is invalid
+		return "Invalid datetime";
+	}
 }
 
 /**
- * Check if a string is a valid uuid, and then return it or throw exception server error
+ * Returns the negated boolean value of the given expression.
+ * This function is intended to improve readability in conditional statements by using natural language.
+ *
+ * @param mixed $value The value to negate.
+ * @return bool Returns false if the value is truthy, true if the value is falsey.
  */
-function uuidOrDie(?string $uuid, $exception = null): string
+function false($value): bool
 {
-	if (!is_uuid($uuid)) {
-		throw $exception ?? new \Exception("$uuid is not valid UUID", 500);
-	}
-
-	return $uuid;
-}
-
-function uuidOrNullOrDie(?string $uuid): ?string
-{
-	if (empty($uuid)) {
-		return null;
-	}
-
-	return uuidOrDie($uuid);
+	return !boolean($value);
 }
 
 /**
- * Check if a string is a valid uuid
- */
-function is_uuid(string $uuid): bool
-{
-	return preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/', "$uuid") === 1;
-}
-/*
- * Check if a string is a valid array of uuids
- */
-function is_array_of_uuid($uuids): bool
-{
-
-	if (!is_array($uuids)) {
-		return false;
-	}
-
-	foreach ($uuids as $uuid) {
-		if (!is_uuid($uuid)) {
-			return false;
-		}
-	}
-	return true;
-}
-
-/**
- * Check if a string is a valid datetime, and then return it or throw exception server error
- */
-function dateTimeOrDie($date): string
-{
-	if (is_ISO8061($date)) {
-		return $date;
-	}
-
-	throw new \Exception("$date is not valid datetime. The value must be ISO 8061 YYYY-MM-DDThh:ii:ss-0000.", 500);
-}
-
-function dateTimeOrNullOrDie($date): ?string
-{
-	if (empty($date)) {
-		return null;
-	}
-
-	return dateTimeOrDie($date);
-}
-
-
-function is_valid_date($date)
-{
-	$date_arr = explode('-', $date);
-
-	if (count($date_arr) != 3) {
-		return false;
-	}
-
-	$year = intval($date_arr[0]);
-	$month = intval($date_arr[1]);
-	$day = intval($date_arr[2]);
-
-	if (!checkdate($month, $day, $year)) {
-		return false;
-	}
-
-	return true;
-}
-
-/**
- * Check if a string is a valid date, and then return it or throw exception server error
- */
-function dateOrDie($date): string
-{
-	if (is_valid_date($date)) {
-		return $date;
-	}
-
-	throw new \Exception("$date is not valid date", 500);
-}
-
-/**
- * Check if a string is a valid date
- */
-function is_ISO8061($date): bool
-{
-	return preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?[+-]\d{2}:\d{2}$/', "$date") === 1;
-}
-
-/**
- * Convert a datetime string to a date string
+ * Determines if a value evaluates to true in a boolean context.
  * 
- * @param string $datetime
+ * This function is intended to improve readability in conditional statements by using natural language.
  * 
- * @return string
+ * @param mixed $value The value to evaluate.
+ * 
+ * @return bool Returns true if the value is truthy, otherwise false.
  */
-function datetimeToDate(string $datetime)
-{
-	$datetime = new DateTime($datetime);
-	return $datetime->format('Y-m-d');
-}
-
-/**
- * Cast as boolean and return negative
- * 
- * @param $v
- * 
- * @return bool
- */
-function not($v): bool
-{
-	return !boolean($v);
-}
-
-/**
- * Alias of boolean
- * 
- * @param $value
- * 
- * @return bool
- */
-function is($value): bool
+function true($value): bool
 {
 	return boolean($value);
 }
 
 /**
- * Check if a string is a valid email
+ * Alias for the 'false' function.
+ * 
+ * This function is intended to improve readability in conditional statements by using natural language.
+ * 
+ * @param mixed $value The value to evaluate.
+ * 
+ * @return bool Returns true if the value is falsey, otherwise false.
+
  */
-function is_email(string $email): bool
+function not($value): bool
 {
-	return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+	return false($value);
 }
+
+/**
+ * Alias for the 'true' function.
+ * 
+ * @param mixed $value The value to evaluate.
+ * 
+ * @return bool Returns true if the value is truthy, otherwise false.
+ */
+function is_true($value): bool
+{
+	return true($value);
+}
+
+/**
+ * Alias for the 'false' function.
+ * 
+ * @param mixed $value The value to evaluate.
+ * 
+ * @return bool Returns true if the value is falsey, otherwise false.
+ */
+function is_false($value): bool
+{
+	return !false($value);
+}
+
 
 /**
  * Check if a string is a valid url
@@ -394,26 +760,7 @@ function is_url(string $url): bool
 	return filter_var($url, FILTER_VALIDATE_URL) !== false;
 }
 
-/**
- * Check if a string is a valid email or null, and then return it or throw exception server error
- */
-function emailOrNullOrDie(?string $email): ?string
-{
-	if ($email === null) {
-		return null;
-	}
-
-	if (is_email($email)) {
-		return $email;
-	}
-
-	throw new \Exception("$email is not valid email", 500);
-}
-
-/**
- * Check if a string is a valid url or null, and then return it or throw exception server error
- */
-function urlOrNullOrDie(?string $url): ?string
+function url_nullable(?string $url): ?string
 {
 	$original = $url;
 
@@ -429,101 +776,33 @@ function urlOrNullOrDie(?string $url): ?string
 		return $url;
 	}
 
-	throw new \Exception("$original is not valid url", 500);
-}
-
-function urlOrNull(?string $url): ?string
-{
-	if ($url === null) {
-		return null;
-	}
-
-	if (is_url($url)) {
-		return $url;
-	}
-
 	return null;
-}
-
-/**
- * Check if a string is a valid email, and then return it or throw exception server error
- */
-function emailOrDie(?string $email): string
-{
-	if ($email === null) {
-		throw new \Exception("Email is null", 500);
-	}
-
-	if (is_email($email)) {
-		return $email;
-	}
-
-	throw new \Exception("$email is not valid email", 500);
-}
-
-/**
- * Check if a string is a valid url, and then return it or throw exception server error
- */
-function urlOrDie(?string $url): string
-{
-	if ($url === null) {
-		throw new \Exception("Url is null", 500);
-	}
-
-	if (is_url($url)) {
-		return $url;
-	}
-
-	throw new \Exception("$url is not valid url", 500);
-}
-
-/**
- * Check if a string is a valid hex color of the form #FFFFFF
- */
-function hexColorOrDie(?string $color): string
-{
-	if (empty($color)) {
-		throw new \Exception("Color is null", 500);
-	}
-
-	$color = strtoupper($color);
-	$matches = preg_match('/^#[0-9a-zA-Z]{6}$/', $color);
-
-	if ($matches === 1) {
-		return $color;
-	}
-
-	throw new \Exception("$color is not a valid color", 500);
 }
 
 /**
  * Map an object or array of objects to another object or array of objects
  *
- * @param $object
- * @param $map
+ * @param object|array $source
+ * @param array|object $map
  * @param array<string> $onlyFields
  *
  * @return mixed
  */
-function map(mixed $object, mixed $map): mixed
+function map(mixed $source, array|object $map): mixed
 {
-	if ($object === null) {
-		$object = new \stdClass();
+	if ($source === null) {
+		$source = new stdClass();
 	}
 
-	if (is_array($object)) {
-		$newObjects = [];
-		foreach ($object as $obj) {
-			$newObjects[] = map((object) $obj, $map);
-		}
-		return $newObjects;
+	if (is_array($source)) {
+		return array_map(fn ($obj) => map($obj, $map), $source);
 	}
 
 	if (is_closure($map)) {
-		return $map($object);
+		return $map($source);
 	}
 
-	$newObject = new \stdClass();
+	$newObject = new stdClass();
 
 	if (is_object($map)) {
 		$newObject = clone $map;
@@ -533,48 +812,21 @@ function map(mixed $object, mixed $map): mixed
 	foreach ($map as $key => $value) {
 		if (is_int($key)) {
 			$key = $value;
-			if (strpos($value, ':') !== false)
-				throw new Exception("Wrong map format. You can't use ':' in map key");
 		}
 
 		if (is_closure($value)) {
 			$passValue = null;
 
-			if (isset($object->$key)) {
-				$passValue = $object?->$key;
+			if (isset($source->$key)) {
+				$passValue = $source?->$key;
 			}
 
-			$newObject->$key = $value($object, $passValue);
+			$newObject->$key = $value($source, $passValue);
 		} else if (is_string($value)) {
-
-			$modifiers = [];
-			if (strpos($value, ':') !== false) {
-				$modifiers = explode(':', $value);
-				$value = trim($modifiers[0]);
-				if (empty($value)) $value = $key;
-				$modifiers = trim($modifiers[1]);
-				$modifiers = explode(',', $modifiers);
-			}
-
-			if (property_exists($object, $value)) {
-				$newObject->$key = $object->$value;
-			} elseif (method_exists($object, $value)) {
-				$newObject->$key = $object->$value();
+			if (property_exists($source, $value)) {
+				$newObject->$key = $source->$value;
 			} else {
 				$newObject->$key = null;
-			}
-
-			if (!empty($modifiers)) {
-				foreach ($modifiers as $modifier) {
-					if (is_callable($modifier)) {
-						try {
-							$newObject->$key = $modifier($newObject->$key);
-						} catch (\Exception $ex) {
-							$context = "Applying modifier $modifier to $key with value '" . string($newObject->$key) . "'";
-							throw new \Exception($ex->getMessage() . ". Context: $context", 500, $ex);
-						}
-					}
-				}
 			}
 		} else {
 			$newObject->$key = $value;
@@ -582,149 +834,83 @@ function map(mixed $object, mixed $map): mixed
 	}
 	return $newObject;
 }
-function notificationLink($link)
-{
-	$link = trim(lower($link));
-	$link = '/' . trim($link, '/') . '/';
-	if (preg_match('/^\/[a-z0-9\/-]+\/$/', $link)) {
-		return $link;
-	} else {
-		return null;
-	}
-}
 
-function arrayOfInts($array)
+/**
+ * Converts all elements of an input array to integers.
+ * If the input is not an array, returns an empty array.
+ *
+ * @param mixed $array The array whose elements are to be converted to integers.
+ * @return array An array with all elements converted to integers.
+ */
+function integer_array($array): array
 {
 	if (!is_array($array)) {
 		return [];
 	}
 
-	$newArray = [];
-	foreach ($array as $item) {
-		$newArray[] = intval($item);
-	}
-
-	return $newArray;
+	return array_map('intval', $array);
 }
 
-function arrayOfStrings($array)
+/**
+ * Splits a comma-separated string into an array of integers.
+ * Strips out any spaces around the numbers and ignores any non-numeric entries, converting them to zero.
+ *
+ * @param string|null $string The comma-separated string of integers.
+ * @return array An array of integers.
+ */
+function split_comma_separated_ints(?string $string): array
 {
-	if (!is_array($array)) {
-		return [];
-	}
-
-	$newArray = [];
-	foreach ($array as $item) {
-		$newArray[] = string($item);
-	}
-
-	return $newArray;
-}
-
-function commaSeparatedInts($string)
-{
-	$array = explode(',', $string);
-	return arrayOfInts($array);
-}
-
-function stringOrDie($string): string
-{
-	$string = string($string);
 	if (empty($string)) {
-		throw new \Exception("String is not valid", 500);
+		return [];
 	}
 
-	return $string;
+	// Split the string by commas, trim spaces, and convert each part to an integer.
+	return array_map('intval', array_map('trim', explode(',', $string)));
 }
 
-function dieIfEmpty($value)
-{
-	if (empty($value)) {
-		throw new \Exception("Empty value", 500);
-	}
-
-	return $value;
-}
-
-function division($a, $b)
+/**
+ * Performs a safe division of two numbers.
+ *
+ * @param float $a The numerator.
+ * @param float $b The denominator.
+ * @return float|null The result of the division, or null if the denominator is zero.
+ */
+function division(float $a, float $b): ?float
 {
 	if ($b == 0) {
-		return 0;
+		return null;  // Return null to indicate an undefined result due to division by zero.
 	}
-
 	return $a / $b;
 }
 
-function booleanOrDie($value)
+/**
+ * Ensures that the given value is an object. Returns the object if it is, or null otherwise.
+ *
+ * @param mixed $value The value to check.
+ * @return object|null The object, if the input is an object; otherwise, null.
+ */
+function object_or_null($value): ?object
 {
-	if ($value === null) {
-		throw new \Exception("Value is null", 500);
-	}
-
-	if (is_bool($value)) {
-		return $value;
-	}
-
-	if (is_string($value)) {
-		$value = lower($value);
-		if ($value === 'true') {
-			return true;
-		} else if ($value === 'false') {
-			return false;
-		}
-	}
-
-	throw new \Exception("Value is not boolean", 500);
+	return is_object($value) ? $value : null;
 }
 
-function objectOrNull($object)
-{
-	if (is_object($object)) {
-		return $object;
-	}
-
-	return null;
-}
-
-function objectOrNullOrDie($object)
-{
-	if (is_object($object)) {
-		return $object;
-	}
-
-	if ($object === null) {
-		return null;
-	}
-
-	throw new \Exception("Value is not object", 500);
-}
-
-function phoneNumber($value)
+/**
+ * Cleans up and extracts a numeric phone number from a given string.
+ * Removes spaces, dashes, pluses, and parentheses, and truncates to a specified length.
+ *
+ * @param string|null $value The input string containing the phone number.
+ * @param int $length The maximum length of the numeric string to return, default is 10.
+ * @return string|null Returns a string of digits up to the specified length, or null if input is null.
+ */
+function clean_phone_number(?string $value, int $length = 10): ?string
 {
 	if ($value === null) return null;
-	$value = str_replace([' ', '-', '+', '(', ')'], '', $value);
-	$value = mb_substr($value, 0, 10);
-	return intval($value);
-}
 
-function userNameOrDie($value)
-{
-	$value = lower(substr(preg_replace('/[^a-zA-Z0-9]+/', '', $value), 0, 15));
+	// Remove all characters except digits
+	$value = preg_replace('/\D/', '', $value);
 
-	if (empty($value) || strlen($value) < 5 || is_numeric($value)) {
-		throw new Exception("El nombre de usuario es inválido");
-	}
-
-	return $value;
-}
-
-function upperOrDie($value)
-{
-	if (empty($value) || strtoupper($value) !== $value) {
-		throw new Exception("El valor debe ser uppercase");
-	}
-
-	return $value;
+	// Return the substring of the specified length
+	return substr($value, 0, $length);
 }
 
 /**
@@ -771,25 +957,21 @@ function len($value): int
 
 function teaser($text, $limit)
 {
-	$text = strip_tags("$text"); // Elimina HTML.
-	$text = preg_replace('/\s+/', ' ', $text); // Reemplaza múltiples espacios por uno solo.
-	$text = trim($text); // Elimina espacios al principio y al final.
+	$text = strip_tags("$text");
+	$text = preg_replace('/\s+/', ' ', $text);
+	$text = trim($text);
 
 	if (mb_strlen($text) <= $limit) {
-		// Si el texto es más corto o igual al límite, simplemente lo retorna.
 		return $text;
 	}
 
-	// Corte inicial al límite para evitar procesamiento innecesario.
 	$cutText = mb_substr($text, 0, $limit);
 	$lastSpace = mb_strrpos($cutText, ' ');
 
 	if ($lastSpace !== false) {
-		// Corta el texto hasta el último espacio para evitar cortar palabras a la mitad.
 		$cutText = mb_substr($cutText, 0, $lastSpace);
 	}
 
-	// Verificar que no se corte en medio de una URL, hashtag o mención.
 	$pattern = '/(http[s]?:\/\/[^\s]+|@[^\s]+|#[^\s]+)/u';
 	preg_match_all($pattern, $text, $matches, PREG_OFFSET_CAPTURE);
 	foreach ($matches[0] as $match) {
@@ -797,7 +979,6 @@ function teaser($text, $limit)
 		$endPos = $startPos + mb_strlen($match[0]);
 
 		if ($startPos < $limit && $endPos > $limit) {
-			// Si el corte está en medio de una URL, hashtag o mención, ajustar el corte.
 			$cutText = mb_substr($text, 0, $startPos);
 			break;
 		}
@@ -869,6 +1050,9 @@ function divide(mixed $value): array
 	};
 }
 
+function unite(array $elements)
+{
+}
 /**
  * Check position of element in a string, numeric, array or object
  * 
@@ -909,12 +1093,14 @@ function search(mixed $haystack, mixed $needle, int $offset = 0, ?string $encodi
 }
 
 /**
- * Check if a value is in a string, numeric, array or object
- * 
- * @param mixed $needle
- * @param mixed $haystack
- * 
- * @return bool
+ * Pads a value to a certain length with another value.
+ * Supports padding strings, numerics, and arrays. Returns the original value if padding cannot be applied.
+ *
+ * @param mixed $value The value to pad.
+ * @param int $length The target length of the output.
+ * @param mixed $padValue The value to pad with. Defaults to a single space.
+ * @param int $padType Specifies which side to pad. Can be STR_PAD_RIGHT or STR_PAD_LEFT.
+ * @return mixed Padded value or original value if padding is not applicable.
  */
 function pad(mixed $value, int $length, mixed $padValue = ' ', int $padType = STR_PAD_RIGHT)
 {
@@ -922,88 +1108,77 @@ function pad(mixed $value, int $length, mixed $padValue = ' ', int $padType = ST
 		return $value;
 	}
 
-	// objects are not supported
-	if (is_object($value)) {
-		throw new \Exception("Objects are not supported for pad values", 500);
+	if (is_object($value) || is_bool($value)) {
+		// Return the value as is if it's an object or boolean since padding these types isn't supported.
+		return $value;
 	}
 
-	// boolean values are not supported
-	if (is_bool($value)) {
-		throw new \Exception("Boolean values are not supported for pad values", 500);
-	}
-
-	// convert allways to array
-	$arr = divide($value);
-
+	// Convert the value to an array
+	$arr = is_array($value) ? $value : str_split((string) $value);
 	$len = count($arr);
 
 	if ($len >= $length) {
 		return $value;
 	}
 
-	$pad = array_fill(0, $length - $len, $padValue);
+	$padLength = $length - $len;
+	$padArray = array_fill(0, $padLength, $padValue);
 
 	if ($padType === STR_PAD_LEFT) {
-		$arr = array_merge($pad, $arr);
+		$arr = array_merge($padArray, $arr);
 	} else {
-		$arr = array_merge($arr, $pad);
+		$arr = array_merge($arr, $padArray);
 	}
 
 	return match (true) {
 		is_string($value) => implode('', $arr),
-		is_int($value) => intval(implode('', $arr)),
-		is_float($value) => floatval(implode('', $arr)),
+		is_numeric($value) => is_float($value + 0) ? floatval(implode('', $arr)) : intval(implode('', $arr)),
 		default => $arr
 	};
 }
 
-/*
- * Check if object has required valid fields
- * 
- * @param object $object
- * @param array $requiredFields
- * 
- * @return bool
+
+/**
+ * Checks if all items in an array meet the specified required fields criteria.
+ * Each item is validated to ensure it contains all fields specified in the required fields list.
+ *
+ * @param array $array The array of items to validate.
+ * @param array $requiredFields The list of fields each item must contain.
+ * @return bool Returns true if all items contain all required fields, otherwise false.
  */
-function validateRequiredFieldsOfList($array, array $requiredFields): bool
+function validate_required_fields_of_list(array $array, array $requiredFields): bool
 {
-
-	if (!is_array($array)) {
-		return false;
-	}
-
 	foreach ($array as $item) {
-		if (!validateRequiredFieldsOfItem($item, $requiredFields)) {
+		if (!validate_required_fields_of_item($item, $requiredFields)) {
 			return false;
 		}
 	}
-
 	return true;
 }
 
-/*
- * Check if object has required valid fields
- * 
- * @param object $object
- * @param array $requiredFields
- * 
- * @return bool
+/**
+ * Checks if an object has all required fields with valid values based on provided validators.
+ * If no validator is provided for a field, it checks for the existence of the field.
+ *
+ * @param object $object The object to validate.
+ * @param array $required_fields An associative array where keys are field names and values are validator functions.
+ * @return bool Returns true if the object passes all validations, otherwise false.
  */
-function validateRequiredFieldsOfItem($object, array $requiredFields): bool
+function validate_required_fields_of_item($object, array $required_fields): bool
 {
-
 	if (!is_object($object)) {
-		return false;
+		return false; // Ensure that the input is an object.
 	}
 
-	foreach ($requiredFields as $field => $validator) {
+	foreach ($required_fields as $field => $validator) {
 		if (is_numeric($field) && is_string($validator)) {
+			// If the key is numeric and the value is a string, assume it's a field with a default validation function.
 			$field = $validator;
-			$validator = fn ($v) => true;
+			$validator = fn ($v) => true; // Default validator does nothing, just checks for field existence.
 		}
 
 		if (!property_exists($object, $field) || !$validator($object->$field)) {
-			return false;
+			return false; // Check if the field exists and passes the validation.
 		}
 	}
 
@@ -1011,123 +1186,146 @@ function validateRequiredFieldsOfItem($object, array $requiredFields): bool
 }
 
 /**
- * Generate a new random hash. Mostly used for temporals
+ * Generates a new random hash. Mostly used for temporary or non-cryptographic purposes.
  *
- * @return string
+ * @param string $algorithm The hashing algorithm to use ('md5', 'sha256', etc.). Default is 'md5'.
+ * @return string Returns a hashed string using the specified algorithm.
  */
-function randomHash()
+function random_hash($algorithm = 'md5')
 {
-	return md5(uniqid("", true));
+	try {
+		$bytes = random_bytes(16); // Generate 16 random bytes
+		return hash($algorithm, $bytes);
+	} catch (Exception $e) {
+		// Handle potential errors when generating random bytes
+		error_log("Error generating random hash: " . $e->getMessage());
+		return null; // Return null or handle accordingly
+	}
 }
 
 /**
- * Multibyte trim
+ * Generates a secure random hash using a cryptographic-safe method.
  *
- * @param $str
- * @param ?string $chars
- * @return string|string[]|null
+ * @return string Returns a securely generated random hash.
  */
-function trimer($str, $chars = null)
+function secure_random_hash()
+{
+	try {
+		$bytes = random_bytes(32); // Generate 32 random bytes for more entropy
+		return bin2hex($bytes); // Convert binary data to hexadecimal representation
+	} catch (Exception $e) {
+		// Handle potential errors when generating random bytes
+		error_log("Error generating secure random hash: " . $e->getMessage());
+		return null;
+	}
+}
+
+/**
+ * Performs a multibyte-safe trim operation to remove specified characters from both ends of a string.
+ * If no characters are specified, whitespace will be removed by default.
+ *
+ * @param string $str The string to trim.
+ * @param string|null $chars A string of characters to be removed. If null, whitespace is removed.
+ * @return string The trimmed string.
+ */
+function trimer(string $str, ?string $chars = null): string
 {
 	if ($chars !== null) {
-		$chars = preg_quote($chars);
-		$pattern = "^[{$chars}]+|[{$chars}]+\$";
+		// preg_quote escapes special characters for use in the regular expression.
+		$chars = preg_quote($chars, '/');
+		$pattern = "^[$chars]+|[$chars]+$";
 	} else {
-		$pattern = '^[\\s]+|[\\s]+$';
+		// Default to trimming whitespace if no characters are provided.
+		$pattern = '^\s+|\s+$';
 	}
 
-	return preg_replace("/$pattern/", "", $str . "");
+	// Use 'u' modifier for multibyte support, ensuring it handles UTF-8 properly.
+	return preg_replace("/$pattern/u", "", $str);
 }
 
 /**
- * Valid date
+ * Cleans and normalizes an email address by trimming, converting to lowercase,
+ * removing unnecessary whitespace and tabs, and handling specific cases like Gmail addresses.
  *
- * @param string $date
- * @param string $format
- *
- * @return bool
+ * @param string $emailAddress The email address to clean.
+ * @return string The cleaned and normalized email address.
  */
-function isValidDate(string $date, string $format = 'Y-m-d'): bool
+function clean_email_address(string $emailAddress): string
 {
-	$d = DateTime::createFromFormat($format, $date);
-	return $d && $d->format($format) === $date;
-}
+	// Trim whitespace and convert to lowercase
+	$emailAddress = lower(trim($emailAddress));
 
-function clearEmailAddress($emailAddress)
-{
-	$emailAddress = trim($emailAddress);
-	$emailAddress = lower($emailAddress);
-	$emailAddress = str_replace(" ", "", $emailAddress);
-	$emailAddress = str_replace("\t", "", $emailAddress);
-	$emailAddress = str_replace("\n", "", $emailAddress);
-	$emailAddress = str_replace("\r", "", $emailAddress);
+	// Remove all whitespace characters including spaces, tabs, and new lines
+	$emailAddress = preg_replace('/\s+/', '', $emailAddress);
 
-	// remove dot from gmail address before @
-	$pos = strpos($emailAddress, "@gmail.com");
-	if ($pos !== false) {
-		$emailAddress = str_replace(".", "", substr($emailAddress, 0, $pos)) . substr($emailAddress, $pos);
+	// Normalize Gmail addresses: remove dots before the '@' if the domain is gmail.com
+	if (strpos($emailAddress, '@gmail.com') !== false) {
+		list($localPart, $domain) = explode('@', $emailAddress);
+		$localPart = str_replace('.', '', $localPart);  // Remove dots from the local part
+		$emailAddress = $localPart . '@' . $domain;
 	}
 
 	return $emailAddress;
 }
 
 /**
- * Remove all properties in an object except the ones passes in the array
+ * Converts a UTC date string to the same date in a specified local timezone.
  *
- * @param array $properties , array of properties to keep
- * @param object $object, object to clean
- * @return object, clean object
+ * @param string $utc_date The UTC date string to be converted.
+ * @param string $timezone The timezone to which the UTC date should be converted. Defaults to 'America/New_York'.
+ * @return string The local date-time string in the specified timezone.
  */
-function filterObjectProperties($properties, $object)
+function convert_utc_to_local_time(string $utc_date, string $timezone = 'America/New_York'): string
 {
-	$objNew = new stdClass();
-	foreach ($properties as $prop) {
-		$objNew->$prop = $object->$prop ?? null;
-	}
-	return $objNew;
-}
-
-function checkUSDT($value): bool
-{
-	return preg_match('/^T[A-Za-z1-9]{33}$/', $value);
+	$dateObj = new DateTime($utc_date, new DateTimeZone('UTC'));  // Initialize the date object with UTC timezone
+	$dateObj->setTimezone(new DateTimeZone($timezone));  // Change the timezone to the desired local timezone
+	return $dateObj->format('Y-m-d\TH:i:sP');  // Format the date and return
 }
 
 /**
- * Coverts a UTC date string to the same date in local timezone
+ * Returns a specified value if the given value is not empty, or null otherwise.
+ * If the value to return is a closure, it will be executed with the tested value as its argument.
  *
- * @param string $utc_date
- * @return string
+ * @param mixed $valueToTest The value to check for emptiness.
+ * @param mixed $valueToReturn The value to return if the tested value is not empty, which can be a closure.
+ * 
+ * @return mixed Returns null if the tested value is empty, otherwise returns the value to return or the result of the closure.
  */
-function dateUTCToLocalTimezone(string $utc_date): string
+function null_if_empty($valueToTest, $valueToReturn = null)
 {
-	$dateObj = new DateTime($utc_date, new DateTimeZone('UTC'));
-	$dateObj->setTimezone(new DateTimeZone('America/New_York'));
-	return str_replace(' ', 'T', $dateObj->format('Y-m-d H:i:sP'));
-}
-
-function nullIfEmpty($valueToTest, $valueToReturn = null)
-{
-	if (empty($valueToTest)) {
+	if (empty($valueToTest) && $valueToTest !== '0' && $valueToTest !== 0 && $valueToTest !== 0.0) {
 		return null;
 	}
 
-	if (empty($valueToReturn)) {
-		return $valueToTest;
-	}
-
-	if (is_closure($valueToReturn)) {
+	// If $valueToReturn is a closure, execute it with $valueToTest as the argument.
+	if ($valueToReturn instanceof \Closure) {
 		return $valueToReturn($valueToTest);
 	}
 
-	return $valueToReturn;
+	// Return $valueToReturn directly if it's not a closure and $valueToTest is not empty.
+	return $valueToReturn ?? $valueToTest;
 }
 
-function trimOrNull($value)
+
+/**
+ * Trims a given string and returns null if the trimmed string is empty.
+ *
+ * @param string|null $value The string to trim.
+ * @return string|null Returns the trimmed string or null if the resulting string is empty.
+ */
+function trim_or_null(?string $value): ?string
 {
-	return nullIfEmpty(trimer($value));
+	if ($value === null) {
+		return null;
+	}
+
+	// Assuming `trimer` is a custom function similar to `trim`, replace with `trim` if not.
+	$trimmed = trimer($value);
+	return null_if_empty($trimmed);
 }
 
-function firstNotEmpty(...$values)
+#region Search
+function first_not_empty(...$values)
 {
 	foreach ($values as $value) {
 		$value = trimer($value);
@@ -1138,6 +1336,7 @@ function firstNotEmpty(...$values)
 
 	return null;
 }
+
 function in($array, mixed $value)
 {
 	if (search($array, $value) === false) {
@@ -1146,13 +1345,15 @@ function in($array, mixed $value)
 
 	return true;
 }
+#endregion
 
+#region Generators
 /**
  * Generate UUID version 4
  * 
  * @return string
  */
-function generateUUIDv4(): string
+function uuidv4(): string
 {
 	$uuid = bin2hex(random_bytes(18));
 	$uuid[8] = $uuid[13] = $uuid[18] = $uuid[23] = '-';
@@ -1164,3 +1365,5 @@ function generateUUIDv4(): string
 	][$uuid[19]] ?? $uuid[19];
 	return $uuid;
 }
+
+#endregion
