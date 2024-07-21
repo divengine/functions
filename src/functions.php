@@ -243,18 +243,18 @@ function boolean(mixed $value): bool
  * @param mixed $value The value to be converted to a string.
  * @param callable $criteria A callable that determines if the value should be converted.
  * 
- * @return ?string Returns the string equivalent of the input value.
+ * @return string Returns the string equivalent of the input value.
  */
-function string(mixed $value, callable|bool $criteria = null): ?string
+function string(mixed $value, callable|bool $criteria = null): string
 {
 	if ($criteria !== null) {
 		if (is_callable($criteria)) {
 			if (!$criteria($value)) {
-				return null;
+				return '';
 			}
 		} else {
 			if (!$criteria) {
-				return null;
+				return '';
 			}
 		}
 	}
@@ -281,8 +281,6 @@ function string(mixed $value, callable|bool $criteria = null): ?string
 		if ($result !== false) {
 			return $result;
 		}
-
-		return null;
 	}
 
 	return '';
@@ -296,7 +294,11 @@ function string(mixed $value, callable|bool $criteria = null): ?string
  */
 function string_nullable(mixed $value): ?string
 {
-	return string($value, !(empty($value) && $value !== '0' && $value !== 0));
+	if (!(empty($value) && $value !== '0' && $value !== 0)) {
+		return null;
+	}
+
+	return string($value);
 }
 
 #endregion
@@ -444,11 +446,11 @@ function array_filter_stringable(?array $value): ?array
 /**
  * Converts a given value to an integer and ensures it is not less than a specified minimum.
  *
- * @param mixed $value The value to be converted to an integer.
+ * @param array<mixed>|bool|float|int|string|null $value The value to be converted to an integer.
  * @param int $min The minimum value to return.
  * @return int The original value converted to an integer, or the minimum value if the original is less.
  */
-function int_or_min($value, int $min): int
+function int_or_min(array|bool|float|int|string|null $value, int $min): int
 {
 	$intValue = intval($value);
 
@@ -458,11 +460,11 @@ function int_or_min($value, int $min): int
 /**
  * Converts a given value to an integer and ensures it does not exceed a specified maximum.
  *
- * @param mixed $value The value to be converted to an integer.
+ * @param array<mixed>|bool|float|int|string|null $value The value to be converted to an integer.
  * @param int $max The maximum value to return.
  * @return int The original value converted to an integer, or the maximum value if the original is more.
  */
-function int_or_max($value, int $max): int
+function int_or_max(array|bool|float|int|string|null $value, int $max): int
 {
 	$intValue = intval($value);
 
@@ -472,11 +474,11 @@ function int_or_max($value, int $max): int
 /**
  * Converts a given value to an integer, or returns a default value if the input is empty or invalid.
  *
- * @param mixed $value The value to be converted.
+ * @param array<mixed>|bool|float|int|string|null $value The value to be converted.
  * @param int $default The default value to return if the input is empty or invalid.
  * @return int The integer value of the input, or the default value if the input is empty or invalid.
  */
-function int_or_default($value, ?int $default = 0): ?int
+function int_or_default(array|bool|float|int|string|null $value, ?int $default = 0): ?int
 {
 	if (empty($value) && $value !== '0' && $value !== 0) {
 		return $default;
@@ -488,10 +490,10 @@ function int_or_default($value, ?int $default = 0): ?int
 /**
  * Converts a given value to an integer, unless the value is empty, in which case it returns null.
  *
- * @param mixed $value The value to be converted to an integer.
+ * @param array<mixed>|bool|float|int|string|null $value The value to be converted to an integer.
  * @return int|null The integer value of the input, or null if the input is empty.
  */
-function int_or_null($value): ?int
+function int_or_null(array|bool|float|int|string|null $value): ?int
 {
 	return int_or_default($value, null);
 }
@@ -545,11 +547,11 @@ function numeric_or_null($value): ?int
 /**
  * Converts a given value to a float, or returns a default value if the input is empty or non-numeric.
  *
- * @param mixed $value The value to be converted.
+ * @param array<mixed>|bool|float|int|string|null $value The value to be converted.
  * @param float $default The default float to return if the input is empty or non-numeric.
  * @return float Returns the float equivalent if the input is not empty, otherwise the default value.
  */
-function float_or_default($value, ?float $default = 0.0): ?float
+function float_or_default(array|bool|float|int|string|null $value, ?float $default = 0.0): ?float
 {
 	if (empty($value) && $value !== '0' && $value !== 0 && $value !== 0.0) {
 		return $default;
@@ -561,13 +563,14 @@ function float_or_default($value, ?float $default = 0.0): ?float
 /**
  * Converts a given value to a float if it is not empty, otherwise returns null.
  *
- * @param mixed $value The value to be converted to float.
+ * @param array<mixed>|bool|float|int|string|null  $value The value to be converted to float.
  * @return float|null Returns the float equivalent of the input if it is not empty, otherwise null.
  */
-function float_or_null($value): ?float
+function float_or_null(array|bool|float|int|string|null $value): ?float
 {
 	return float_or_default($value, null);
 }
+
 #endregion
 
 #region Processors
@@ -818,7 +821,7 @@ function map(mixed $source, callable|array|object $map): mixed
 			$key = $value;
 		}
 
-		if (is_closure($value)) {
+		if (is_callable($value)) {
 			$passValue = null;
 
 			if (isset($source->$key)) {
@@ -827,7 +830,7 @@ function map(mixed $source, callable|array|object $map): mixed
 
 			$newObject->$key = $value($source, $passValue);
 		} else if (is_string($value)) {
-			if (property_exists($source, $value)) {
+			if (is_object($source) && property_exists($source, $value)) {
 				$newObject->$key = $source->$value;
 			} else {
 				$newObject->$key = null;
@@ -914,7 +917,7 @@ function clean_phone_number(?string $value, int $length = 10): ?string
 	$value = preg_replace('/\D/', '', $value);
 
 	// Return the substring of the specified length
-	return substr($value, 0, $length);
+	return substr(string($value), 0, $length);
 }
 
 /**
@@ -969,7 +972,7 @@ function len($value): int
 function teaser(string $text, int $limit): string
 {
 	$text = strip_tags(string($text));
-	$text = preg_replace('/\s+/', ' ', $text);
+	$text = string(preg_replace('/\s+/', ' ', $text));
 	$text = trim($text);
 
 	if (mb_strlen($text) <= $limit) {
@@ -1090,18 +1093,26 @@ function conquer(array $values, bool $recursive = true): mixed
 	}
 
 	if (is_array($firstValue)) {
-		if ($recursive) {
-			return conquer(array_merge(...$values));
+		$merged = [];
+		foreach ($values as $value) {
+			$merged = array_merge($merged, (array) $value);
 		}
 
-		return array_merge(...$values);
+		if ($recursive) {
+			return conquer($merged);
+		}
+
+		return $merged;
 	}
 
 	if (is_object($firstValue)) {
 		$result = new stdClass();
 		foreach ($values as $object) {
-			foreach ($object as $prop => $val) {
-				$result->$prop = $val;
+			$array = (array) $object;
+			if (is_array($array)) {
+				foreach ($array as $prop => $val) {
+					$result->$prop = $val;
+				}
 			}
 		}
 		return $result;
@@ -1145,7 +1156,7 @@ function search(mixed $haystack, mixed $needle, int $offset = 0, ?string $encodi
 	}
 
 	if (is_string($haystack)) {
-		return mb_strpos($haystack, $needle, $offset, $encoding);
+		return mb_strpos($haystack, string($needle), $offset, $encoding);
 	}
 
 	if (is_object($haystack)) {
@@ -1185,7 +1196,7 @@ function pad(mixed $value, int $length, mixed $padValue = ' ', int $padType = ST
 	}
 
 	// Convert the value to an array
-	$arr = is_array($value) ? $value : str_split((string) $value);
+	$arr = is_array($value) ? $value : str_split(string($value));
 	$len = count($arr);
 
 	if ($len >= $length) {
@@ -1248,8 +1259,10 @@ function validate_required_fields_of_item($object, array $required_fields): bool
 			$validator = fn ($v) => true; // Default validator does nothing, just checks for field existence.
 		}
 
-		if (!property_exists($object, $field) || !$validator($object->$field)) {
-			return false; // Check if the field exists and passes the validation.
+		if (is_callable($validator)) {
+			if (!property_exists($object, $field) || !$validator($object->$field)) {
+				return false; // Check if the field exists and passes the validation.
+			}
 		}
 	}
 
@@ -1312,7 +1325,7 @@ function trimer(string $str, ?string $chars = null): string
 	}
 
 	// Use 'u' modifier for multibyte support, ensuring it handles UTF-8 properly.
-	return preg_replace("/$pattern/u", "", $str);
+	return string(preg_replace("/$pattern/u", "", $str));
 }
 
 /**
@@ -1328,7 +1341,7 @@ function clean_email_address(string $emailAddress): string
 	$emailAddress = lower(trim($emailAddress));
 
 	// Remove all whitespace characters including spaces, tabs, and new lines
-	$emailAddress = preg_replace('/\s+/', '', $emailAddress);
+	$emailAddress = string(preg_replace('/\s+/', '', $emailAddress));
 
 	// Normalize Gmail addresses: remove dots before the '@' if the domain is gmail.com
 	if (strpos($emailAddress, '@gmail.com') !== false) {
@@ -1391,9 +1404,8 @@ function trim_or_null(?string $value): ?string
 		return null;
 	}
 
-	// Assuming `trimer` is a custom function similar to `trim`, replace with `trim` if not.
-	$trimmed = trimer($value);
-	return null_if_empty($trimmed);
+	$trimmed = null_if_empty(trimer($value));
+	return $trimmed == null ? null : string($trimmed);
 }
 
 #region Search
@@ -1407,7 +1419,6 @@ function trim_or_null(?string $value): ?string
 function first_not_empty(mixed ...$values): mixed
 {
 	foreach ($values as $value) {
-		$value = trimer($value);
 		if (!empty($value)) {
 			return $value;
 		}
