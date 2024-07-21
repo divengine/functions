@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Div PHP Functions
  * 
