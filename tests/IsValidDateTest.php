@@ -1,5 +1,7 @@
 <?php
 
+namespace divengine\tests;
+
 use PHPUnit\Framework\TestCase;
 
 class IsValidDateTest extends TestCase

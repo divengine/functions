@@ -9,7 +9,7 @@ class IsClosureTest extends TestCase
 	public function testIsClosure()
 	{
 		$expected = true;
-		$compiled = \divengine\is_closure(fn() => null);
+		$compiled = \divengine\is_closure(fn () => null);
 		$this->assertEquals($expected, $compiled);
 	}
 
