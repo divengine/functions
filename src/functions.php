@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Div PHP Functions
  * 
@@ -98,7 +99,7 @@ function is_ISO8601(string $date): bool
 /**
  * Checks if all elements in an array are valid UUIDs.
  *
- * @param array $uuids The array to validate.
+ * @param array<string> $uuids The array to validate.
  * @return bool Returns true if every element in the array is a valid UUID, otherwise false.
  */
 function is_array_of_uuid(?array $uuids): bool
@@ -202,7 +203,7 @@ function is_lower(string $value): bool
  */
 function something_or_null($value): mixed
 {
-	return (is_null($value) || empty($value) && $value != '0' && $value != 0) ? null : $value;
+	return (is_null($value) || empty($value)) ? null : $value;
 }
 
 #endregion
@@ -242,9 +243,9 @@ function boolean(mixed $value): bool
  * @param mixed $value The value to be converted to a string.
  * @param callable $criteria A callable that determines if the value should be converted.
  * 
- * @return string Returns the string equivalent of the input value.
+ * @return ?string Returns the string equivalent of the input value.
  */
-function string(mixed $value, callable|bool $criteria = null): string
+function string(mixed $value, callable|bool $criteria = null): ?string
 {
 	if ($criteria !== null) {
 		if (is_callable($criteria)) {
@@ -275,7 +276,13 @@ function string(mixed $value, callable|bool $criteria = null): string
 	}
 
 	if (is_array($value) || is_object($value)) {
-		return json_encode($value);
+		$result = json_encode($value);
+
+		if ($result !== false) {
+			return $result;
+		}
+
+		return null;
 	}
 
 	return '';
@@ -368,9 +375,8 @@ function lower_nullable(?string $value): ?string
  * using the 'string' function.
  * Returns null if the input array is null or empty.
  *
- * @param array|null $value The array to be converted to an array of strings, or null.
- * 
- * @return array|null An array with each element converted to a string, or null if input is null or empty.
+ * @param array<mixed>|null $value The array to be converted to an array of strings, or null.
+ * @return array<string>|null An array with each element converted to a string, or null if input is null or empty.
  */
 function string_array(?array $value): ?array
 {
@@ -388,8 +394,8 @@ function string_array(?array $value): ?array
  * if possible, otherwise sets it to null.
  * Returns null if the input array is null.
  *
- * @param array|null $value The array to be processed, where each element is converted to a string or set to null.
- * @return array|null An array where each element is a string or null, or null if input is null.
+ * @param array<mixed>|null $value The array to be processed, where each element is converted to a string or set to null.
+ * @return array<string|null>|null An array where each element is a string or null, or null if input is null.
  */
 function string_array_nullable(?array $value): ?array
 {
@@ -410,8 +416,8 @@ function string_array_nullable(?array $value): ?array
  * Returns an array of string elements from the input array, filtering out non-stringable elements.
  * Returns null if the resulting array is empty.
  *
- * @param array|null $value The array to be processed.
- * @return array|null An array of string elements, or null if the resulting array is empty.
+ * @param array<mixed>|null $value The array to be processed.
+ * @return array<mixed>|null An array of string elements, or null if the resulting array is empty.
  */
 function array_filter_stringable(?array $value): ?array
 {
@@ -470,7 +476,7 @@ function int_or_max($value, int $max): int
  * @param int $default The default value to return if the input is empty or invalid.
  * @return int The integer value of the input, or the default value if the input is empty or invalid.
  */
-function int_or_default($value, ?int $default = 0): int
+function int_or_default($value, ?int $default = 0): ?int
 {
 	if (empty($value) && $value !== '0' && $value !== 0) {
 		return $default;
@@ -497,7 +503,7 @@ function int_or_null($value): ?int
  * @param int $default The default value to return if the input is zero.
  * @return int Returns the input integer if it is non-zero, otherwise the default value.
  */
-function non_zero_or_default(int $value, ?int $default = -1): int
+function non_zero_or_default(int $value, ?int $default = -1): ?int
 {
 	return ($value === 0) ? $default : $value;
 }
@@ -520,7 +526,7 @@ function non_zero_or_null(int $value): ?int
  * @param int $default The default integer to return if the input is non-numeric.
  * @return int Returns the integer equivalent if the input is numeric, otherwise the default value.
  */
-function numeric_or_default($value, ?int $default = 0): int
+function numeric_or_default($value, ?int $default = 0): ?int
 {
 	return is_numeric($value) ? intval($value) : $default;
 }
@@ -543,7 +549,7 @@ function numeric_or_null($value): ?int
  * @param float $default The default float to return if the input is empty or non-numeric.
  * @return float Returns the float equivalent if the input is not empty, otherwise the default value.
  */
-function float_or_default($value, ?float $default = 0.0): float
+function float_or_default($value, ?float $default = 0.0): ?float
 {
 	if (empty($value) && $value !== '0' && $value !== 0 && $value !== 0.0) {
 		return $default;
@@ -603,10 +609,10 @@ function str_safe_replace(mixed $input, mixed $search, mixed $replace): string
 /**
  * Replaces all occurrences of a search value with a replacement value in an array.
  *
- * @param array $array The array to perform replacements on.
+ * @param array<mixed> $array The array to perform replacements on.
  * @param mixed $search The value to search for.
  * @param mixed $replace The replacement value.
- * @return array Returns the modified array with replacements.
+ * @return array<mixed> Returns the modified array with replacements.
  */
 function array_replace_values(array $array, $search, $replace)
 {
@@ -620,10 +626,10 @@ function array_replace_values(array $array, $search, $replace)
 /**
  * Replaces all occurrences of a search value with a replacement value in an array, using strict comparison.
  *
- * @param array $array The array to perform replacements on.
+ * @param array<mixed> $array The array to perform replacements on.
  * @param mixed $search The value to search for.
  * @param mixed $replace The replacement value.
- * @return array Returns the modified array with replacements.
+ * @return array<mixed> Returns the modified array with replacements.
  */
 function array_replace_values_strict(array $array, $search, $replace)
 {
@@ -781,13 +787,12 @@ function url_nullable(?string $url): ?string
 /**
  * Map an object or array of objects to another object or array of objects
  *
- * @param object|array $source
- * @param array|object $map
- * @param array<string> $onlyFields
+ * @param mixed $source
+ * @param callable|array<mixed>|object $map
  *
  * @return mixed
  */
-function map(mixed $source, array|object $map): mixed
+function map(mixed $source, callable|array|object $map): mixed
 {
 	if ($source === null) {
 		$source = new stdClass();
@@ -797,7 +802,7 @@ function map(mixed $source, array|object $map): mixed
 		return array_map(fn ($obj) => map($obj, $map), $source);
 	}
 
-	if (is_closure($map)) {
+	if (is_callable($map)) {
 		return $map($source);
 	}
 
@@ -817,7 +822,7 @@ function map(mixed $source, array|object $map): mixed
 			$passValue = null;
 
 			if (isset($source->$key)) {
-				$passValue = $source?->$key;
+				$passValue = $source->$key;
 			}
 
 			$newObject->$key = $value($source, $passValue);
@@ -839,7 +844,7 @@ function map(mixed $source, array|object $map): mixed
  * If the input is not an array, returns an empty array.
  *
  * @param mixed $array The array whose elements are to be converted to integers.
- * @return array An array with all elements converted to integers.
+ * @return array<int> An array with all elements converted to integers.
  */
 function integer_array($array): array
 {
@@ -855,7 +860,7 @@ function integer_array($array): array
  * Strips out any spaces around the numbers and ignores any non-numeric entries, converting them to zero.
  *
  * @param string|null $string The comma-separated string of integers.
- * @return array An array of integers.
+ * @return array<int> An array of integers.
  */
 function split_comma_separated_ints(?string $string): array
 {
@@ -954,9 +959,16 @@ function len($value): int
 	return 0;
 }
 
-function teaser($text, $limit)
+/**
+ * Teaser function to create a short preview of a text.
+ * 
+ * @param string $text
+ * @param int $limit
+ * @return string
+ */
+function teaser(string $text, int $limit): string
 {
-	$text = strip_tags("$text");
+	$text = strip_tags(string($text));
 	$text = preg_replace('/\s+/', ' ', $text);
 	$text = trim($text);
 
@@ -986,31 +998,11 @@ function teaser($text, $limit)
 	return trim($cutText) . '...';
 }
 
-function teaser150($text)
-{
-	return teaser($text, 150);
-}
-
-function teaser200($text)
-{
-	return teaser($text, 200);
-}
-
-function teaser300($text)
-{
-	return teaser($text, 300);
-}
-
-function teaser500($text)
-{
-	return teaser($text, 500);
-}
-
 /**
- * Check if a value is in a string, numeric, array or object
+ * Remove accents from a string.
  * 
- * @param mixed $needle
- * @param mixed $haystack
+ * @param string $value
+ * @param bool $includeNTilde
  * 
  * @return string
  */
@@ -1034,7 +1026,7 @@ function remove_accents(string $value, bool $includeNTilde = false): string
  *
  * @param mixed $value The value to split.
  *
- * @return array The array of characters.
+ * @return array<mixed> The array of characters.
  */
 function divide(mixed $value): array
 {
@@ -1049,6 +1041,24 @@ function divide(mixed $value): array
 	};
 }
 
+/**
+ * Check if a float value has a non-zero decimal part.
+ * 
+ * @param float $number
+ * @return bool
+ */
+function has_non_zero_decimal(float $number): bool
+{
+	return fmod($number, 1) != 0.0;
+}
+
+/**
+ * Join an array of values into a single value.
+ * 
+ * @param array<mixed> $values
+ * @param bool $recursive
+ * @return mixed
+ */
 function conquer(array $values, bool $recursive = true): mixed
 {
 	if (empty($values)) {
@@ -1063,14 +1073,14 @@ function conquer(array $values, bool $recursive = true): mixed
 		}
 	}
 
-	if (is_numeric($allNumerics)) {
+	if ($allNumerics) {
 		$s = join('', $values);
 		$n = (float) $s;
-		return is_float($n) ? $n : (int) $s;
+		return has_non_zero_decimal($n) ? $n : (int) $s;
 	}
 
 	$firstValue = $values[0];
-	
+
 	if (is_bool($firstValue)) {
 		return in_array(true, $values, true);
 	}
@@ -1080,8 +1090,7 @@ function conquer(array $values, bool $recursive = true): mixed
 	}
 
 	if (is_array($firstValue)) {
-		if ($recursive)
-		{
+		if ($recursive) {
 			return conquer(array_merge(...$values));
 		}
 
@@ -1123,16 +1132,16 @@ function conquer(array $values, bool $recursive = true): mixed
  * @param mixed $needle
  * @param mixed $haystack
  * 
- * @return int|false
+ * @return int|string|false
  */
-function search(mixed $haystack, mixed $needle, int $offset = 0, ?string $encoding = null)
+function search(mixed $haystack, mixed $needle, int $offset = 0, ?string $encoding = null): int|string|false
 {
 	if (empty($haystack) || empty($needle)) {
 		return false;
 	}
 
 	if (is_numeric($haystack)) {
-		$haystack = "$haystack";
+		$haystack = string($haystack);
 	}
 
 	if (is_string($haystack)) {
@@ -1144,9 +1153,7 @@ function search(mixed $haystack, mixed $needle, int $offset = 0, ?string $encodi
 	}
 
 	if (is_array($haystack)) {
-		$haystack = array_slice($haystack, $offset);
-		$pos = array_search($needle, $haystack, true);
-		return $pos === false ? false : $pos + $offset;
+		return array_search($needle, $haystack, true);
 	}
 
 	if (is_bool($haystack)) {
@@ -1206,8 +1213,8 @@ function pad(mixed $value, int $length, mixed $padValue = ' ', int $padType = ST
  * Checks if all items in an array meet the specified required fields criteria.
  * Each item is validated to ensure it contains all fields specified in the required fields list.
  *
- * @param array $array The array of items to validate.
- * @param array $requiredFields The list of fields each item must contain.
+ * @param array<object> $array The array of items to validate.
+ * @param array<mixed> $requiredFields The list of fields each item must contain.
  * @return bool Returns true if all items contain all required fields, otherwise false.
  */
 function validate_required_fields_of_list(array $array, array $requiredFields): bool
@@ -1225,7 +1232,7 @@ function validate_required_fields_of_list(array $array, array $requiredFields): 
  * If no validator is provided for a field, it checks for the existence of the field.
  *
  * @param object $object The object to validate.
- * @param array $required_fields An associative array where keys are field names and values are validator functions.
+ * @param array<mixed> $required_fields An associative array where keys are field names and values are validator functions.
  * @return bool Returns true if the object passes all validations, otherwise false.
  */
 function validate_required_fields_of_item($object, array $required_fields): bool
@@ -1253,9 +1260,10 @@ function validate_required_fields_of_item($object, array $required_fields): bool
  * Generates a new random hash. Mostly used for temporary or non-cryptographic purposes.
  *
  * @param string $algorithm The hashing algorithm to use ('md5', 'sha256', etc.). Default is 'md5'.
- * @return string Returns a hashed string using the specified algorithm.
+ * 
+ * @return ?string Returns a hashed string using the specified algorithm.
  */
-function random_hash($algorithm = 'md5')
+function random_hash($algorithm = 'md5'): ?string
 {
 	try {
 		$bytes = random_bytes(16); // Generate 16 random bytes
@@ -1272,7 +1280,7 @@ function random_hash($algorithm = 'md5')
  *
  * @return string Returns a securely generated random hash.
  */
-function secure_random_hash()
+function secure_random_hash(): ?string
 {
 	try {
 		$bytes = random_bytes(32); // Generate 32 random bytes for more entropy
@@ -1389,7 +1397,14 @@ function trim_or_null(?string $value): ?string
 }
 
 #region Search
-function first_not_empty(...$values)
+
+/**
+ * Search the first non-empty value in a list of values.
+ * 
+ * @param mixed $values
+ * @return mixed
+ */
+function first_not_empty(mixed ...$values): mixed
 {
 	foreach ($values as $value) {
 		$value = trimer($value);
@@ -1401,9 +1416,16 @@ function first_not_empty(...$values)
 	return null;
 }
 
-function in($array, mixed $value)
+/**
+ * Search for a value in an array or string and return the index or position.
+ * 
+ * @param mixed $haystack
+ * @param mixed $value
+ * @return bool
+ */
+function in($haystack, mixed $value): bool
 {
-	if (search($array, $value) === false) {
+	if (search($haystack, $value) === false) {
 		return false;
 	}
 
