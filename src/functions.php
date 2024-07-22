@@ -787,6 +787,103 @@ function url_nullable(?string $url): ?string
 	return null;
 }
 
+#region Objects
+
+/**
+ * Compose object/array properties
+ *
+ * @param mixed   $source
+ * @param mixed   $complement
+ * @param integer $level
+ * @param boolean $strict
+ * @param \ReflectionProperty   $propertyType
+ * @return mixed
+ */
+function cop(mixed &$source, mixed $complement, int $level = 0, bool $strict = false, \ReflectionProperty $propertyType = null)
+{
+	$null = null;
+
+	if (is_null($source)) {
+		return $complement;
+	}
+
+	if (is_null($complement)) {
+		return $source;
+	}
+
+	if (is_scalar($source) && is_scalar($complement)) {
+		return $complement;
+	}
+
+	if (is_scalar($complement) || is_scalar($source)) {
+		return $source;
+	}
+
+	if ($level < 100) { // prevent infinite loop
+		if (is_object($complement)) {
+			$complement = get_object_vars($complement);
+		}
+
+		if (is_iterable($complement)) {
+			foreach ($complement as $key => $value) {
+				if (is_object($source)) {
+					if (property_exists($source, $key)) {
+						$property = new \ReflectionProperty($source, $key);
+						$property->setAccessible(true);
+
+						if (!$property->isInitialized($source)) {
+							$defaultValue = $property->getType()->allowsNull() ? null : construct($property->getType()->getName());
+							$property->setValue($source, $defaultValue);
+						}
+
+						$propertyValue = $property->getValue($source);
+
+						if (is_object($propertyValue) && is_object($value)) {
+							cop($propertyValue, $value, $level + 1, $strict, $property);
+						} else {
+							$propertyType = $property->getType();
+							$property->setValue($source, cop($propertyValue, $value, $level + 1, $strict, $property));
+						}
+					} else {
+						if (!$strict) {
+							$source->$key = cop($null, $value, $level + 1, $strict);
+						}
+					}
+				}
+
+				if (is_array($source)) {
+					$setted =  false;
+					if ($propertyType !== null) {
+						if ($propertyType instanceof \ReflectionProperty) {
+							$docComment = $propertyType->getDocComment();
+							if ($docComment) {
+								$arrayElementType = array_type($docComment);
+								if (class_exists($arrayElementType)) {
+									$source[$key] = new $arrayElementType();
+									cop($source[$key], $value, $level + 1, $strict, $propertyType);
+									$setted = true;
+								}
+							}
+						}
+					}
+
+					if (!$setted) {
+						if (array_key_exists($key, $source)) {
+							$source[$key] = cop($source[$key], $value, $level + 1, $strict);
+						} else {
+							if (!$strict) {
+								$source[$key] = cop($null, $value, $level + 1, $strict);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return $source;
+}
+
 /**
  * Map an object or array of objects to another object or array of objects
  *
@@ -841,6 +938,8 @@ function map(mixed $source, callable|array|object $map): mixed
 	}
 	return $newObject;
 }
+
+#endregion
 
 /**
  * Converts all elements of an input array to integers.
@@ -1463,4 +1562,43 @@ function uuidv4(): string
 	return $uuid;
 }
 
+/**
+ * Default value based on type
+ * 
+ * @param string $typeName
+ * @return mixed
+ */
+function construct(string $typeName): mixed
+{
+	if (class_exists($typeName))
+	{
+		return new $typeName();
+	}
+
+	return match ($typeName) {
+		'int' => 0,
+		'float' => 0.0,
+		'bool' => false,
+		'string' => '',
+		'array' => [],
+		'object' => (object) [],
+		default => null
+	};
+}
+
+/**
+ * Resolve array type from doc
+ * 
+ * @param string $arrayType
+ * 
+ * @return string
+ */
+function array_type(string $arrayType): string
+{
+	if (preg_match('/@var\s+(?:array<([^>\s]+)>\s*|\s*([^>\s]+)\[\]\s*)/', $arrayType, $matches)) {
+		return $matches[1] ?: $matches[2];
+	}
+
+	return $arrayType;
+}
 #endregion
