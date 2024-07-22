@@ -832,7 +832,9 @@ function cop(mixed &$source, mixed $complement, int $level = 0, bool $strict = f
 						$property->setAccessible(true);
 
 						if (!$property->isInitialized($source)) {
-							$defaultValue = $property->getType()->allowsNull() ? null : construct($property->getType()->getName());
+							$type = $property->getType();
+							$typeName = $type instanceof \ReflectionNamedType ? $type->getName() : null;
+							$defaultValue = $type?->allowsNull() ? null : construct($typeName);
 							$property->setValue($source, $defaultValue);
 						}
 
@@ -1565,11 +1567,16 @@ function uuidv4(): string
 /**
  * Default value based on type
  * 
- * @param string $typeName
+ * @param ?string $typeName
  * @return mixed
  */
-function construct(string $typeName): mixed
+function construct(?string $typeName): mixed
 {
+	if (empty($typeName))
+	{
+		return null;
+	}
+
 	if (class_exists($typeName))
 	{
 		return new $typeName();
