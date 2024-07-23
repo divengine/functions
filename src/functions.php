@@ -22,6 +22,14 @@ use stdClass;
 #region Checkers
 
 /**
+ * Check if a string is a valid url
+ */
+function is_url(string $url): bool
+{
+	return filter_var($url, FILTER_VALIDATE_URL) !== false;
+}
+
+/**
  * Checks if the provided variable is a Closure.
  *
  * @param mixed $var The variable to check.
@@ -306,6 +314,78 @@ function string_nullable(mixed $value): ?string
 #region Strings
 
 /**
+ * Teaser function to create a short preview of a text.
+ * 
+ * @param string $text
+ * @param int $limit
+ * @return string
+ */
+function teaser(string $text, int $limit): string
+{
+	$text = strip_tags(string($text));
+	$text = string(preg_replace('/\s+/', ' ', $text));
+	$text = trim($text);
+
+	if (mb_strlen($text) <= $limit) {
+		return $text;
+	}
+
+	$cutText = mb_substr($text, 0, $limit);
+	$lastSpace = mb_strrpos($cutText, ' ');
+
+	if ($lastSpace !== false) {
+		$cutText = mb_substr($cutText, 0, $lastSpace);
+	}
+
+	$pattern = '/(http[s]?:\/\/[^\s]+|@[^\s]+|#[^\s]+)/u';
+	preg_match_all($pattern, $text, $matches, PREG_OFFSET_CAPTURE);
+	foreach ($matches[0] as $match) {
+		$startPos = $match[1];
+		$endPos = $startPos + mb_strlen($match[0]);
+
+		if ($startPos < $limit && $endPos > $limit) {
+			$cutText = mb_substr($text, 0, $startPos);
+			break;
+		}
+	}
+
+	return trim($cutText) . '...';
+}
+
+/**
+ * Checks if a string contains another string.
+ * This function uses multibyte string position to accurately determine the presence of a substring.
+ *
+ * @param string|null $string The string to search within.
+ * @param string|null $search The substring to search for.
+ * @return bool Returns true if the substring is found, otherwise false.
+ */
+function contains_sensitive(?string $string, ?string $search): bool
+{
+	$string = $string ?? '';
+	$search = $search ?? '';
+
+	return mb_strpos($string, $search) !== false;
+}
+
+/**
+ * Checks if a string contains another string, ignoring case.
+ * This function uses a case-insensitive multibyte string position check.
+ *
+ * @param string|null $string The string to search within.
+ * @param string|null $search The substring to search for.
+ * @return bool Returns true if the substring is found, otherwise false.
+ */
+function contains(?string $string, ?string $search): bool
+{
+	$string = $string ?? '';
+	$search = $search ?? '';
+
+	return mb_stripos($string, $search) !== false;
+}
+
+
+/**
  * Converts a given string to its uppercase equivalent.
  * Returns an empty string if the input is null.
  *
@@ -369,9 +449,60 @@ function lower_nullable(?string $value): ?string
 
 	return mb_strtolower($value);
 }
+
+/**
+ * Trims a given string and returns null if the trimmed string is empty.
+ *
+ * @param string|null $value The string to trim.
+ * @return string|null Returns the trimmed string or null if the resulting string is empty.
+ */
+function trim_or_null(?string $value): ?string
+{
+	if ($value === null) {
+		return null;
+	}
+
+	$trimmed = null_if_empty(trimer($value));
+	return $trimmed == null ? null : string($trimmed);
+}
+
 #endregion
 
 #region Arrays
+
+/**
+ * Converts all elements of an input array to integers.
+ * If the input is not an array, returns an empty array.
+ *
+ * @param mixed $array The array whose elements are to be converted to integers.
+ * @return array<int> An array with all elements converted to integers.
+ */
+function integer_array($array): array
+{
+	if (!is_array($array)) {
+		return [];
+	}
+
+	return array_map('intval', $array);
+}
+
+/**
+ * Splits a comma-separated string into an array of integers.
+ * Strips out any spaces around the numbers and ignores any non-numeric entries, converting them to zero.
+ *
+ * @param string|null $string The comma-separated string of integers.
+ * @return array<int> An array of integers.
+ */
+function split_comma_separated_ints(?string $string): array
+{
+	if (empty($string)) {
+		return [];
+	}
+
+	// Split the string by commas, trim spaces, and convert each part to an integer.
+	return array_map('intval', array_map('trim', explode(',', $string)));
+}
+
 /**
  * Converts each element of an array to its string equivalent, 
  * using the 'string' function.
@@ -644,38 +775,21 @@ function array_replace_values_strict(array $array, $search, $replace)
 }
 #endregion
 
-/**
- * Checks if a string contains another string.
- * This function uses multibyte string position to accurately determine the presence of a substring.
- *
- * @param string|null $string The string to search within.
- * @param string|null $search The substring to search for.
- * @return bool Returns true if the substring is found, otherwise false.
- */
-function contains_sensitive(?string $string, ?string $search): bool
-{
-	$string = $string ?? '';
-	$search = $search ?? '';
-
-	return mb_strpos($string, $search) !== false;
-}
+#region Dates
 
 /**
- * Checks if a string contains another string, ignoring case.
- * This function uses a case-insensitive multibyte string position check.
+ * Converts a UTC date string to the same date in a specified local timezone.
  *
- * @param string|null $string The string to search within.
- * @param string|null $search The substring to search for.
- * @return bool Returns true if the substring is found, otherwise false.
+ * @param string $utc_date The UTC date string to be converted.
+ * @param string $timezone The timezone to which the UTC date should be converted. Defaults to 'America/New_York'.
+ * @return string The local date-time string in the specified timezone.
  */
-function contains(?string $string, ?string $search): bool
+function convert_utc_to_local_time(string $utc_date, string $timezone = 'America/New_York'): string
 {
-	$string = $string ?? '';
-	$search = $search ?? '';
-
-	return mb_stripos($string, $search) !== false;
+	$dateObj = new DateTime($utc_date, new DateTimeZone('UTC'));  // Initialize the date object with UTC timezone
+	$dateObj->setTimezone(new DateTimeZone($timezone));  // Change the timezone to the desired local timezone
+	return $dateObj->format('Y-m-d\TH:i:sP');  // Format the date and return
 }
-
 
 /**
  * Converts a datetime string to a date string in the format 'Y-m-d'.
@@ -693,6 +807,10 @@ function datetime_to_date(string $datetime): string
 		return "Invalid datetime";
 	}
 }
+
+#endregion
+
+#region Booleans
 
 /**
  * Returns the negated boolean value of the given expression.
@@ -759,33 +877,7 @@ function is_false($value): bool
 	return !false($value);
 }
 
-
-/**
- * Check if a string is a valid url
- */
-function is_url(string $url): bool
-{
-	return filter_var($url, FILTER_VALIDATE_URL) !== false;
-}
-
-function url_nullable(?string $url): ?string
-{
-	$original = $url;
-
-	if ($url === null) {
-		return null;
-	}
-
-	if (!is_url($url)) {
-		$url = 'http://' . $original;
-	}
-
-	if (is_url($url)) {
-		return $url;
-	}
-
-	return null;
-}
+#endregion
 
 #region Objects
 
@@ -941,40 +1033,20 @@ function map(mixed $source, callable|array|object $map): mixed
 	return $newObject;
 }
 
+/**
+ * Ensures that the given value is an object. Returns the object if it is, or null otherwise.
+ *
+ * @param mixed $value The value to check.
+ * @return object|null The object, if the input is an object; otherwise, null.
+ */
+function object_or_null($value): ?object
+{
+	return is_object($value) ? $value : null;
+}
+
 #endregion
 
-/**
- * Converts all elements of an input array to integers.
- * If the input is not an array, returns an empty array.
- *
- * @param mixed $array The array whose elements are to be converted to integers.
- * @return array<int> An array with all elements converted to integers.
- */
-function integer_array($array): array
-{
-	if (!is_array($array)) {
-		return [];
-	}
-
-	return array_map('intval', $array);
-}
-
-/**
- * Splits a comma-separated string into an array of integers.
- * Strips out any spaces around the numbers and ignores any non-numeric entries, converting them to zero.
- *
- * @param string|null $string The comma-separated string of integers.
- * @return array<int> An array of integers.
- */
-function split_comma_separated_ints(?string $string): array
-{
-	if (empty($string)) {
-		return [];
-	}
-
-	// Split the string by commas, trim spaces, and convert each part to an integer.
-	return array_map('intval', array_map('trim', explode(',', $string)));
-}
+#region Maths
 
 /**
  * Performs a safe division of two numbers.
@@ -991,16 +1063,159 @@ function division(float $a, float $b): ?float
 	return $a / $b;
 }
 
+#endregion
+
+#region Search
+
 /**
- * Ensures that the given value is an object. Returns the object if it is, or null otherwise.
- *
- * @param mixed $value The value to check.
- * @return object|null The object, if the input is an object; otherwise, null.
+ * Search the first non-empty value in a list of values.
+ * 
+ * @param mixed $values
+ * @return mixed
  */
-function object_or_null($value): ?object
+function first_not_empty(mixed ...$values): mixed
 {
-	return is_object($value) ? $value : null;
+	foreach ($values as $value) {
+		if (!empty($value)) {
+			return $value;
+		}
+	}
+
+	return null;
 }
+
+/**
+ * Search for a value in an array or string and return the index or position.
+ * 
+ * @param mixed $haystack
+ * @param mixed $value
+ * @return bool
+ */
+function in($haystack, mixed $value): bool
+{
+	if (search($haystack, $value) === false) {
+		return false;
+	}
+
+	return true;
+}
+
+#endregion
+
+#region Generators
+/**
+ * Generate UUID version 4
+ * 
+ * @return string
+ */
+function uuidv4(): string
+{
+	$uuid = bin2hex(random_bytes(18));
+	$uuid[8] = $uuid[13] = $uuid[18] = $uuid[23] = '-';
+	$uuid[14] = '4';
+	$uuid[19] = [
+		'8', '9', 'a', 'b', '8', '9',
+		'a', 'b', 'c' => '8', 'd' => '9',
+		'e' => 'a', 'f' => 'b'
+	][$uuid[19]] ?? $uuid[19];
+	return $uuid;
+}
+
+/**
+ * Default value based on type
+ * 
+ * @param ?string $typeName
+ * @return mixed
+ */
+function construct(?string $typeName): mixed
+{
+	if (empty($typeName)) {
+		return null;
+	}
+
+	if (class_exists($typeName)) {
+		return new $typeName();
+	}
+
+	return match ($typeName) {
+		'int' => 0,
+		'float' => 0.0,
+		'bool' => false,
+		'string' => '',
+		'array' => [],
+		'object' => (object) [],
+		default => null
+	};
+}
+
+/**
+ * Resolve array type from doc
+ * 
+ * @param string $arrayType
+ * 
+ * @return string
+ */
+function array_type(string $arrayType): string
+{
+	if (preg_match('/@var\s+(?:array<([^>\s]+)>\s*|\s*([^>\s]+)\[\]\s*)/', $arrayType, $matches)) {
+		return $matches[1] ?: $matches[2];
+	}
+
+	return $arrayType;
+}
+
+#endregion
+
+#region Unclassified
+/**
+ * Returns the input value if it is not null, otherwise returns a default value.
+ * 
+ * @param mixed $url
+ * @return string|null
+ */
+function url_nullable(?string $url): ?string
+{
+	$original = $url;
+
+	if ($url === null) {
+		return null;
+	}
+
+	if (!is_url($url)) {
+		$url = 'http://' . $original;
+	}
+
+	if (is_url($url)) {
+		return $url;
+	}
+
+	return null;
+}
+
+/**
+ * Returns a specified value if the given value is not empty, or null otherwise.
+ * If the value to return is a closure, it will be executed with the tested value as its argument.
+ *
+ * @param mixed $valueToTest The value to check for emptiness.
+ * @param mixed $valueToReturn The value to return if the tested value is not empty, which can be a closure.
+ * 
+ * @return mixed Returns null if the tested value is empty, otherwise returns the value to return or the result of the closure.
+ */
+function null_if_empty($valueToTest, $valueToReturn = null)
+{
+	if (empty($valueToTest) && $valueToTest !== '0' && $valueToTest !== 0 && $valueToTest !== 0.0) {
+		return null;
+	}
+
+	// If $valueToReturn is a closure, execute it with $valueToTest as the argument.
+	if ($valueToReturn instanceof \Closure) {
+		return $valueToReturn($valueToTest);
+	}
+
+	// Return $valueToReturn directly if it's not a closure and $valueToTest is not empty.
+	return $valueToReturn ?? $valueToTest;
+}
+
 
 /**
  * Cleans up and extracts a numeric phone number from a given string.
@@ -1063,44 +1278,6 @@ function len($value): int
 	return 0;
 }
 
-/**
- * Teaser function to create a short preview of a text.
- * 
- * @param string $text
- * @param int $limit
- * @return string
- */
-function teaser(string $text, int $limit): string
-{
-	$text = strip_tags(string($text));
-	$text = string(preg_replace('/\s+/', ' ', $text));
-	$text = trim($text);
-
-	if (mb_strlen($text) <= $limit) {
-		return $text;
-	}
-
-	$cutText = mb_substr($text, 0, $limit);
-	$lastSpace = mb_strrpos($cutText, ' ');
-
-	if ($lastSpace !== false) {
-		$cutText = mb_substr($cutText, 0, $lastSpace);
-	}
-
-	$pattern = '/(http[s]?:\/\/[^\s]+|@[^\s]+|#[^\s]+)/u';
-	preg_match_all($pattern, $text, $matches, PREG_OFFSET_CAPTURE);
-	foreach ($matches[0] as $match) {
-		$startPos = $match[1];
-		$endPos = $startPos + mb_strlen($match[0]);
-
-		if ($startPos < $limit && $endPos > $limit) {
-			$cutText = mb_substr($text, 0, $startPos);
-			break;
-		}
-	}
-
-	return trim($cutText) . '...';
-}
 
 /**
  * Remove accents from a string.
@@ -1237,7 +1414,6 @@ function conquer(array $values, bool $recursive = true): mixed
 	return join('', $array);
 }
 
-
 /**
  * Check position of element in a string, numeric, array or object
  * 
@@ -1319,7 +1495,6 @@ function pad(mixed $value, int $length, mixed $padValue = ' ', int $padType = ST
 		default => $arr
 	};
 }
-
 
 /**
  * Checks if all items in an array meet the specified required fields criteria.
@@ -1454,158 +1629,4 @@ function clean_email_address(string $emailAddress): string
 	return $emailAddress;
 }
 
-/**
- * Converts a UTC date string to the same date in a specified local timezone.
- *
- * @param string $utc_date The UTC date string to be converted.
- * @param string $timezone The timezone to which the UTC date should be converted. Defaults to 'America/New_York'.
- * @return string The local date-time string in the specified timezone.
- */
-function convert_utc_to_local_time(string $utc_date, string $timezone = 'America/New_York'): string
-{
-	$dateObj = new DateTime($utc_date, new DateTimeZone('UTC'));  // Initialize the date object with UTC timezone
-	$dateObj->setTimezone(new DateTimeZone($timezone));  // Change the timezone to the desired local timezone
-	return $dateObj->format('Y-m-d\TH:i:sP');  // Format the date and return
-}
-
-/**
- * Returns a specified value if the given value is not empty, or null otherwise.
- * If the value to return is a closure, it will be executed with the tested value as its argument.
- *
- * @param mixed $valueToTest The value to check for emptiness.
- * @param mixed $valueToReturn The value to return if the tested value is not empty, which can be a closure.
- * 
- * @return mixed Returns null if the tested value is empty, otherwise returns the value to return or the result of the closure.
- */
-function null_if_empty($valueToTest, $valueToReturn = null)
-{
-	if (empty($valueToTest) && $valueToTest !== '0' && $valueToTest !== 0 && $valueToTest !== 0.0) {
-		return null;
-	}
-
-	// If $valueToReturn is a closure, execute it with $valueToTest as the argument.
-	if ($valueToReturn instanceof \Closure) {
-		return $valueToReturn($valueToTest);
-	}
-
-	// Return $valueToReturn directly if it's not a closure and $valueToTest is not empty.
-	return $valueToReturn ?? $valueToTest;
-}
-
-
-/**
- * Trims a given string and returns null if the trimmed string is empty.
- *
- * @param string|null $value The string to trim.
- * @return string|null Returns the trimmed string or null if the resulting string is empty.
- */
-function trim_or_null(?string $value): ?string
-{
-	if ($value === null) {
-		return null;
-	}
-
-	$trimmed = null_if_empty(trimer($value));
-	return $trimmed == null ? null : string($trimmed);
-}
-
-#region Search
-
-/**
- * Search the first non-empty value in a list of values.
- * 
- * @param mixed $values
- * @return mixed
- */
-function first_not_empty(mixed ...$values): mixed
-{
-	foreach ($values as $value) {
-		if (!empty($value)) {
-			return $value;
-		}
-	}
-
-	return null;
-}
-
-/**
- * Search for a value in an array or string and return the index or position.
- * 
- * @param mixed $haystack
- * @param mixed $value
- * @return bool
- */
-function in($haystack, mixed $value): bool
-{
-	if (search($haystack, $value) === false) {
-		return false;
-	}
-
-	return true;
-}
-#endregion
-
-#region Generators
-/**
- * Generate UUID version 4
- * 
- * @return string
- */
-function uuidv4(): string
-{
-	$uuid = bin2hex(random_bytes(18));
-	$uuid[8] = $uuid[13] = $uuid[18] = $uuid[23] = '-';
-	$uuid[14] = '4';
-	$uuid[19] = [
-		'8', '9', 'a', 'b', '8', '9',
-		'a', 'b', 'c' => '8', 'd' => '9',
-		'e' => 'a', 'f' => 'b'
-	][$uuid[19]] ?? $uuid[19];
-	return $uuid;
-}
-
-/**
- * Default value based on type
- * 
- * @param ?string $typeName
- * @return mixed
- */
-function construct(?string $typeName): mixed
-{
-	if (empty($typeName))
-	{
-		return null;
-	}
-
-	if (class_exists($typeName))
-	{
-		return new $typeName();
-	}
-
-	return match ($typeName) {
-		'int' => 0,
-		'float' => 0.0,
-		'bool' => false,
-		'string' => '',
-		'array' => [],
-		'object' => (object) [],
-		default => null
-	};
-}
-
-/**
- * Resolve array type from doc
- * 
- * @param string $arrayType
- * 
- * @return string
- */
-function array_type(string $arrayType): string
-{
-	if (preg_match('/@var\s+(?:array<([^>\s]+)>\s*|\s*([^>\s]+)\[\]\s*)/', $arrayType, $matches)) {
-		return $matches[1] ?: $matches[2];
-	}
-
-	return $arrayType;
-}
 #endregion
