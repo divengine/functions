@@ -1170,7 +1170,7 @@ function array_type(string $arrayType): string
 /**
  * Returns the input value if it is not null, otherwise returns a default value.
  * 
- * @param mixed $url
+ * @param string|null $url
  * @return string|null
  */
 function url_nullable(?string $url): ?string
