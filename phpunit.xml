@@ -6,10 +6,9 @@
 	failOnRisky="true"
 	displayDetailsOnTestsThatTriggerWarnings="true"
 	failOnWarning="true"
-	bootstrap="tests/bootstrap.php"
 	colors="true">
 	<testsuites>
-		<testsuite name="functions">
+		<testsuite name="divengine/functions">
 			<directory>tests</directory>
 		</testsuite>
 	</testsuites>

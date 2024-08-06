@@ -9,6 +9,11 @@
  * solutions that PHP lacks natively.
  * 
  * @package divengine/functions
+ * @author  Rafa Rodriguez @rafageist [https://rafageist.com]
+ * @version 1.0.1
+ *
+ * @link    https://divengine.org
+ * @link    https://github.com/divengine/functions
  */
 
 namespace divengine;
@@ -1629,4 +1634,22 @@ function clean_email_address(string $emailAddress): string
 	return $emailAddress;
 }
 
+/**
+ * Returns the decoded JSON value of a given mixed, or a default value if the input is empty.
+ * 
+ * @param mixed $jsonCode
+ * @param mixed $default
+ * 
+ * @return mixed
+ */
+function json_decode_or_default($jsonCode, $default = null)
+{
+	$json = string($jsonCode);
+
+	if (empty($json)) {
+		return $default;
+	}
+
+	return json_decode($json);
+}
 #endregion
