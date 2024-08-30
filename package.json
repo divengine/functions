@@ -1,0 +1,20 @@
+{
+	"name": "@divengine/functions",
+	"version": "1.0.0",
+	"description": "A collection of standalone functions designed to enhance JS capabilities",
+	"main": "src/functions.js",
+	"type": "module",
+	"scripts": {
+		"test": "jest"
+	},
+	"author": "Tu Nombre",
+	"license": "MIT",
+	"dependencies": {
+		"jest": "^29.7.0"
+	},
+	"devDependencies": {
+		"@babel/core": "^7.25.2",
+		"@babel/preset-env": "^7.25.4",
+		"babel-jest": "^29.7.0"
+	}
+}
