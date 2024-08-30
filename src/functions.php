@@ -10,7 +10,7 @@
  * 
  * @package divengine/functions
  * @author  Rafa Rodriguez @rafageist [https://rafageist.com]
- * @version 1.0.1
+ * @version 1.1.0
  *
  * @link    https://divengine.org
  * @link    https://github.com/divengine/functions
@@ -522,7 +522,7 @@ function string_array(?array $value): ?array
 		return null;
 	}
 
-	$value = array_map(fn ($item) => string($item), $value);
+	$value = array_map(fn($item) => string($item), $value);
 
 	return $value;
 }
@@ -574,6 +574,38 @@ function array_filter_stringable(?array $value): ?array
 	return $filteredArray;
 }
 
+/**
+ * Array splice with associative keys and maintain association.
+ * 
+ * @param array $input
+ * @param int|bool|string|float $offset
+ * @param int|bool|string|float $key
+ * @param int $length
+ * @param mixed $replacement
+ * @return array
+ */
+function array_splice_assoc(array &$input, int|bool|string|float $offset, int|bool|string|float|null $key, int $length = 0, mixed $replacement = []): array
+{
+	// get keys of $input
+	$keys = array_keys($input);
+
+	// create parallel array of $input with numeric keys
+	$values = array_values($input);
+
+	// get the integer key of $offset in $keys
+	$numericOffset = array_search($offset, $keys);
+
+	// splice out a portion of $values
+	array_splice($values, $numericOffset, $length, $replacement);
+
+	// insert $key into $keys at $numericOffset
+	array_splice($keys, $numericOffset, $length, $key);
+
+	// combine $keys and $values into $input
+	$input = array_combine($keys, $values);
+
+	return $input;
+}
 
 #endregion
 
@@ -998,7 +1030,7 @@ function map(mixed $source, callable|array|object $map): mixed
 	}
 
 	if (is_array($source)) {
-		return array_map(fn ($obj) => map($obj, $map), $source);
+		return array_map(fn($obj) => map($obj, $map), $source);
 	}
 
 	if (is_callable($map)) {
@@ -1119,9 +1151,18 @@ function uuidv4(): string
 	$uuid[8] = $uuid[13] = $uuid[18] = $uuid[23] = '-';
 	$uuid[14] = '4';
 	$uuid[19] = [
-		'8', '9', 'a', 'b', '8', '9',
-		'a', 'b', 'c' => '8', 'd' => '9',
-		'e' => 'a', 'f' => 'b'
+		'8',
+		'9',
+		'a',
+		'b',
+		'8',
+		'9',
+		'a',
+		'b',
+		'c' => '8',
+		'd' => '9',
+		'e' => 'a',
+		'f' => 'b'
 	][$uuid[19]] ?? $uuid[19];
 	return $uuid;
 }
@@ -1537,7 +1578,7 @@ function validate_required_fields_of_item($object, array $required_fields): bool
 		if (is_numeric($field) && is_string($validator)) {
 			// If the key is numeric and the value is a string, assume it's a field with a default validation function.
 			$field = $validator;
-			$validator = fn ($v) => true; // Default validator does nothing, just checks for field existence.
+			$validator = fn($v) => true; // Default validator does nothing, just checks for field existence.
 		}
 
 		if (is_callable($validator)) {
@@ -1652,4 +1693,23 @@ function json_decode_or_default($jsonCode, $default = null)
 
 	return json_decode($json);
 }
+#endregion
+
+#region Error Handling
+
+/**
+ * Attempts to execute an operation and returns the result or an exception if an error occurs.
+ *
+ * @param \Closure $operation The operation to attempt.
+ * @return mixed The result of the operation or an exception if an error occurs.
+ */
+function attempt(\Closure $operation)
+{
+	try {
+		return $operation();
+	} catch (\Throwable $e) {
+		return $e;
+	}
+}
+
 #endregion
