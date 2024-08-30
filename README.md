@@ -1,26 +1,50 @@
-# Div PHP Functions
+# Divengine Functions
 
-A collection of standalone functions designed to enhance PHP capabilities, providing common utilities without external dependencies. Part of the divengine\* ecosystem, these functions offer atomic solutions that PHP lacks natively.
+A collection of standalone functions designed to enhance PHP and JavaScript capabilities, providing common utilities without external dependencies. Part of the divengine\* ecosystem, these functions offer atomic solutions that PHP & JS lacks natively.
 
-## Install
+## PHP
+
+### Install
 
 ```shell
 composer require divengine/functions
 ```
 
-## Upgrade
+### Upgrade
 
 ```shell
 composer update
 ```
 
-## Usage
+### Usage
 
 ```php
 <?php
 use divengine\string;
 
 echo string(1);
+```
+
+### JavaScript
+
+### Install
+
+```shell
+npm install @divengine/functions
+```
+
+### Upgrade
+
+```shell
+npm update
+```
+
+### Usage
+
+```javascript
+import { string } from '@divengine/functions';
+
+console.log(string(1));
 ```
 
 ## Documentation

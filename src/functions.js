@@ -184,6 +184,64 @@ export function somethingOrNull(value) {
 }
 
 /**
+ * Converts a given value to its string equivalent.
+ *
+ * @param {*} value The value to be converted to a string.
+ * @param {Function|boolean} [criteria=null] A callable function or boolean that determines if the value should be converted.
+ * 
+ * @return {string} Returns the string equivalent of the input value.
+ */
+export function string(value, criteria = null) {
+    if (criteria !== null) {
+        if (typeof criteria === 'function') {
+            if (!criteria(value)) {
+                return '';
+            }
+        } else if (criteria === false) {
+            return '';
+        }
+    }
+
+    if (typeof value === 'string') {
+        return value;
+    }
+
+    if (typeof value === 'number' || typeof value === 'bigint') {
+        return String(value);
+    }
+
+    if (typeof value === 'boolean') {
+        return value ? 'true' : 'false';
+    }
+
+	if (Array.isArray(value)) {
+        const result = JSON.stringify(value);
+        if (result !== undefined) {
+            return result;
+        }
+    }
+
+    if (value !== null && typeof value === 'object')
+	{
+		if (typeof value.toString === 'function' && value.toString !== Object.prototype.toString) {
+			let v = value.toString();
+			if (v !== '[object Object]') {
+				return '{}';
+			}
+		}
+		else 
+		{
+			const result = JSON.stringify(value);
+			if (result !== undefined) {
+				return result;
+			}
+		}
+    }
+	
+    return '';
+}
+
+/**
  * Simple wrapper for error handling in async/sync operations
  */ 
 export const attempt = {
@@ -202,3 +260,4 @@ export const attempt = {
         }
     }
 };
+
