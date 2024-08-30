@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Div PHP Functions
+ * Divengine Functions for PHP
  * 
  * A collection of standalone functions designed to enhance PHP capabilities,
  * providing common utilities without external dependencies. 

@@ -1,5 +1,5 @@
 /**
- * Div JS Functions
+ * Divengine Functions for JS
  * 
  * A collection of standalone functions designed to enhance JS capabilities,
  * providing common utilities without external dependencies. 
@@ -237,7 +237,7 @@ export function string(value, criteria = null) {
 			}
 		}
     }
-	
+
     return '';
 }
 
